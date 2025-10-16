@@ -6,7 +6,7 @@ import me.cortex.voxy.client.core.gl.GlVertexArray;
 import me.cortex.voxy.client.core.gl.shader.Shader;
 import me.cortex.voxy.client.core.gl.shader.ShaderType;
 import me.cortex.voxy.client.core.rendering.util.UploadStream;
-import net.minecraft.client.render.BuiltBuffer;
+import net.minecraft.client.render.BufferBuilder.BuiltBuffer;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.texture.AbstractTexture;
 
@@ -56,18 +56,18 @@ public class BudgetBufferRenderer {
     private static GlBuffer immediateBuffer;
     private static int quadCount;
     public static void drawFast(BuiltBuffer buffer, AbstractTexture tex, Matrix4f matrix) {
-        if (buffer.getDrawParameters().mode() != VertexFormat.DrawMode.QUADS) {
+        if (buffer.getParameters().mode() != VertexFormat.DrawMode.QUADS) {
             throw new IllegalStateException("Fast only supports quads");
         }
 
-        var buff = buffer.getBuffer();
+        var buff = buffer.getVertexBuffer();
         int size = buff.remaining();
         if (size%STRIDE != 0) throw new IllegalStateException();
         size /= STRIDE;
         if (size%4 != 0) throw new IllegalStateException();
         size /= 4;
         setup(MemoryUtil.memAddress(buff), size, tex.getGlId());
-        buffer.close();
+        buffer.release();
 
         render(matrix);
     }

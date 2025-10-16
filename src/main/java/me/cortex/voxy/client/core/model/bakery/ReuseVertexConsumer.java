@@ -24,13 +24,13 @@ public final class ReuseVertexConsumer implements VertexConsumer {
     }
 
     @Override
-    public ReuseVertexConsumer vertex(float x, float y, float z) {
+    public ReuseVertexConsumer vertex(double x, double y, double z) {
         this.ensureCanPut();
         this.ptr += VERTEX_FORMAT_SIZE; this.count++; //Goto next vertex
         this.meta(this.defaultMeta);
-        MemoryUtil.memPutFloat(this.ptr, x);
-        MemoryUtil.memPutFloat(this.ptr + 4, y);
-        MemoryUtil.memPutFloat(this.ptr + 8, z);
+        MemoryUtil.memPutFloat(this.ptr, (float) x);
+        MemoryUtil.memPutFloat(this.ptr + 4, (float) y);
+        MemoryUtil.memPutFloat(this.ptr + 8, (float) z);
         return this;
     }
 
@@ -121,5 +121,20 @@ public final class ReuseVertexConsumer implements VertexConsumer {
 
     public long getAddress() {
         return this.buffer.address;
+    }
+
+    @Override
+    public void fixedColor(int red, int green, int blue, int alpha) {
+        return;
+    }
+
+    @Override
+    public void next() {
+        return;
+    }
+
+    @Override
+    public void unfixColor() {
+        return;
     }
 }

@@ -60,7 +60,7 @@ public class BakedBlockEntityModel {
 
         boolean isMipped = layer == RenderLayer.getCutoutMipped() ||
                 layer == RenderLayer.getSolid() ||
-                layer.isTranslucent() ||
+                layer == RenderLayer.getTranslucent() ||
                 layer == RenderLayer.getTripwire();
 
         int meta = hasDiscard?1:0;

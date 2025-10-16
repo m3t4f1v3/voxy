@@ -1,8 +1,8 @@
 package me.cortex.voxy.client.core.gl.shader;
 
 
-import net.caffeinemc.mods.sodium.client.gl.shader.ShaderConstants;
-import net.caffeinemc.mods.sodium.client.gl.shader.ShaderParser;
+import me.jellysquid.mods.sodium.client.gl.shader.ShaderConstants;
+import me.jellysquid.mods.sodium.client.gl.shader.ShaderParser;
 
 public class ShaderLoader {
     public static String parse(String id) {

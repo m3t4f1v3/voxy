@@ -1,6 +1,6 @@
 package me.cortex.voxy.client.core.model;
 
-import net.caffeinemc.mods.sodium.client.util.color.ColorSRGB;
+import me.jellysquid.mods.sodium.client.util.color.ColorSRGB;
 import net.minecraft.client.texture.MipmapHelper;
 
 //Texturing utils to manipulate data from the model bakery

@@ -28,9 +28,9 @@ public class MixinClientChunkManager implements ICheekyClientChunkManager {
     }
 
     @Inject(method = "unload", at = @At("HEAD"))
-    public void voxy$captureChunkBeforeUnload(ChunkPos pos, CallbackInfo ci) {
+    public void voxy$captureChunkBeforeUnload(int x, int z, CallbackInfo ci) {
         if (VoxyConfig.CONFIG.ingestEnabled && BOBBY_INSTALLED) {
-            var chunk = this.voxy$cheekyGetChunk(pos.x, pos.z);
+            var chunk = this.voxy$cheekyGetChunk(x, z);
             if (chunk != null) {
                 VoxelIngestService.tryAutoIngestChunk(chunk);
             }

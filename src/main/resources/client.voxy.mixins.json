@@ -18,7 +18,7 @@
     "iris.MixinStandardMacros",
     "minecraft.MixinClientWorld",
     "minecraft.MixinClientChunkManager",
-    "minecraft.MixinClientCommonNetworkHandler",
+    // "minecraft.MixinClientCommonNetworkHandler",
     "minecraft.MixinClientLoginNetworkHandler",
     "minecraft.MixinFogRenderer",
     // "minecraft.MixinGlDebug",
