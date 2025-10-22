@@ -21,6 +21,7 @@
     // "minecraft.MixinClientCommonNetworkHandler",
     "minecraft.MixinClientLoginNetworkHandler",
     "minecraft.MixinFogRenderer",
+    "minecraft.MixinDebugHud",
     // "minecraft.MixinGlDebug",
     "minecraft.MixinMinecraftClient",
     "minecraft.MixinRenderSystem",
