@@ -41,6 +41,7 @@ import static org.lwjgl.opengl.GL42.GL_NOTEQUAL;
 import static org.lwjgl.opengl.GL42.glDepthFunc;
 import static org.lwjgl.opengl.GL42.*;
 import static org.lwjgl.opengl.GL45.glClearNamedFramebufferfi;
+import static org.lwjgl.opengl.GL45.glGetNamedFramebufferAttachmentParameteri;
 import static org.lwjgl.opengl.GL45C.glBindTextureUnit;
 import static org.lwjgl.opengl.GL45C.glBlitNamedFramebuffer;
 
@@ -55,6 +56,8 @@ public abstract class AbstractRenderPipeline extends TrackedObject {
 
     private final FullscreenBlit depthMaskBlit = new FullscreenBlit("voxy:post/fullscreen2.vert", "voxy:post/noop.frag");
     private final FullscreenBlit depthSetBlit = new FullscreenBlit("voxy:post/fullscreen2.vert", "voxy:post/depth0.frag");
+    private final FullscreenBlit depthCopy = new FullscreenBlit("voxy:post/fullscreen2.vert", "voxy:post/depth_copy.frag");
+
     protected AbstractRenderPipeline(AsyncNodeManager nodeManager, NodeCleaner nodeCleaner, HierarchicalOcclusionTraverser traversal, BooleanSupplier frexSupplier) {
         this.frexStillHasWork = frexSupplier;
         this.nodeManager = nodeManager;
@@ -106,9 +109,15 @@ public abstract class AbstractRenderPipeline extends TrackedObject {
 
     protected void initDepthStencil(int sourceFrameBuffer, int targetFb, int srcWidth, int srcHeight, int width, int height) {
         glClearNamedFramebufferfi(targetFb, GL_DEPTH_STENCIL, 0, 1.0f, 1);
-        glBlitNamedFramebuffer(sourceFrameBuffer, targetFb, 0,0, srcWidth, srcHeight, 0,0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-
+        // using blit to copy depth from mismatched depth formats is not portable so instead a full screen pass is performed for a depth copy
+        // the mismatched formats in this case is the d32 to d24s8
         glBindFramebuffer(GL30.GL_FRAMEBUFFER, targetFb);
+
+        int depthTexture = glGetNamedFramebufferAttachmentParameteri(sourceFrameBuffer, GL_DEPTH_ATTACHMENT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME);
+        glBindTextureUnit(0, depthTexture);
+
+        glColorMask(false,false,false,false);
+        this.depthCopy.blit();
 
         /*
         if (Capabilities.INSTANCE.isMesa){
@@ -126,7 +135,6 @@ public abstract class AbstractRenderPipeline extends TrackedObject {
 
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_NOTEQUAL);//If != 1 pass
-        glColorMask(false,false,false,false);
         //We do here
         this.depthMaskBlit.blit();
         glDisable(GL_DEPTH_TEST);
@@ -147,6 +155,9 @@ public abstract class AbstractRenderPipeline extends TrackedObject {
 
     private static final long SCRATCH = MemoryUtil.nmemAlloc(4*4*4);
     protected static void transformBlitDepth(FullscreenBlit blitShader, int srcDepthTex, int dstFB, Viewport<?> viewport, Matrix4f targetTransform) {
+        // at this point the dst frame buffer doesn't have a stencil attachment so we don't need to keep the stencil test on for the blit
+        // in the worst case the dstFB does have a stencil attachment causing this pass to become 'corrupted'
+        glDisable(GL_STENCIL_TEST);
         glBindFramebuffer(GL30.GL_FRAMEBUFFER, dstFB);
 
         blitShader.bind();
@@ -157,7 +168,6 @@ public abstract class AbstractRenderPipeline extends TrackedObject {
         nglUniformMatrix4fv(2, 1, false, SCRATCH);//tooProjection
 
         glEnable(GL_DEPTH_TEST);
-        //We keep the stencil test on with the emitting, only to where non terrain is rendered
         blitShader.blit();
         glDisable(GL_STENCIL_TEST);
         glDisable(GL_DEPTH_TEST);
