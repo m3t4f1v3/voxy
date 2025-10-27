@@ -144,6 +144,9 @@ public class IrisVoxyRenderPipeline extends AbstractRenderPipeline {
                     this.fbTranslucent.getDepthTex().id, sourceFrameBuffer,
                     viewport, new Matrix4f(viewport.vanillaProjection).mul(viewport.modelView));
             glColorMask(true, true, true, true);
+        } else {
+            // normally disabled by AbstractRenderPipeline but since we are skipping it we do it here
+            glDisable(GL_STENCIL_TEST);
         }
     }
 
