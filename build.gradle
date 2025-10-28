@@ -144,6 +144,12 @@ dependencies {
     modCompileOnly("maven.modrinth:vivecraft:1.20.1-1.3.2-fabric")
 
     modCompileOnly("maven.modrinth:flashback:rNCr1Rbs")
+
+    // implementation("maven.modrinth:DistantHorizonsApi:4.1.0")
+    // i know should be runtime only but BLAHHH
+    modCompileOnly("maven.modrinth:DistantHorizons:2.3.6-b-1.20.1")
+    modRuntimeOnlyMsk("maven.modrinth:DistantHorizons:2.3.6-b-1.20.1")
+    modRuntimeOnlyMsk("maven.modrinth:indium:1.0.36+mc1.20.1")
 }
 
 

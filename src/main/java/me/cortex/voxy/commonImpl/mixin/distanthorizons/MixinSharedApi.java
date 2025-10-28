@@ -14,6 +14,8 @@ import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 import loaderCommon.fabric.com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.common.world.service.VoxelIngestService;
+import me.cortex.voxy.commonImpl.WorldIdentifier;
+import net.minecraft.client.MinecraftClient;
 // import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.chunk.WorldChunk;
 
@@ -22,7 +24,7 @@ public class MixinSharedApi {
     @Inject(method = "queueChunkUpdate", at = @At(
         value = "NEW",
         target = "Lcom/seibel/distanthorizons/core/api/internal/chunkUpdating/ChunkUpdateData;"),
-        // cancellable = true,
+//        cancellable = true,
         remap = false
     )
     private static void beforeChunkUpdateCreation(

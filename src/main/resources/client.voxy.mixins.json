@@ -34,6 +34,7 @@
     "sodium.MixinChunkJobQueue",
     "sodium.MixinDefaultChunkRenderer",
     "sodium.MixinRenderSectionManager",
+    // "sodium.MixinSodiumWorldRenderer",
     "sodium.MixinSodiumOptionsGUI"
   ],
   "injectors": {
