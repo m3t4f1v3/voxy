@@ -68,7 +68,7 @@ public final class ReuseVertexConsumer implements VertexConsumer {
 
     public ReuseVertexConsumer quad(BakedQuad quad, int metadata) {
         this.ensureCanPut();
-        int[] data = quad.vertexData();
+        int[] data = quad.getVertexData();
         for (int i = 0; i < 4; i++) {
             float x = Float.intBitsToFloat(data[i * 8]);
             float y = Float.intBitsToFloat(data[i * 8 + 1]);

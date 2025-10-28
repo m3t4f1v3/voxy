@@ -8,7 +8,7 @@ import me.cortex.voxy.commonImpl.VoxyCommon;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.gui.hud.debug.DebugHudEntries;
+// import net.minecraft.client.gui.hud.debug.DebugHudEntries;
 import net.minecraft.util.Identifier;
 
 import java.util.HashSet;
@@ -40,7 +40,7 @@ public class VoxyClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        DebugHudEntries.register(Identifier.of("voxy","debug"), new VoxyDebugScreenEntry());
+        // DebugHudEntries.register(Identifier.of("voxy","debug"), new VoxyDebugScreenEntry());
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             if (VoxyCommon.isAvailable()) {
                 dispatcher.register(VoxyCommands.register());

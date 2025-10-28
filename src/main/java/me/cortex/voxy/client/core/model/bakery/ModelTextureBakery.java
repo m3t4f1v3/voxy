@@ -3,7 +3,7 @@ package me.cortex.voxy.client.core.model.bakery;
 import net.minecraft.block.*;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.BlockRenderLayer;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.fluid.FluidState;
@@ -41,22 +41,22 @@ public class ModelTextureBakery {
         this.height = height;
     }
 
-    public static int getMetaFromLayer(BlockRenderLayer layer) {
-        boolean hasDiscard = layer == BlockRenderLayer.CUTOUT ||
-                layer == BlockRenderLayer.CUTOUT_MIPPED ||
-                layer == BlockRenderLayer.TRIPWIRE;
+    public static int getMetaFromLayer(RenderLayer layer) {
+        boolean hasDiscard = layer == RenderLayer.getCutout() ||
+                layer == RenderLayer.getCutoutMipped() ||
+                layer == RenderLayer.getTripwire();
 
-        boolean isMipped = layer == BlockRenderLayer.CUTOUT_MIPPED ||
-                layer == BlockRenderLayer.SOLID ||
-                layer == BlockRenderLayer.TRANSLUCENT ||
-                layer == BlockRenderLayer.TRIPWIRE;
+        boolean isMipped = layer == RenderLayer.getCutoutMipped() ||
+                layer == RenderLayer.getSolid() ||
+                layer == RenderLayer.getTranslucent() ||
+                layer == RenderLayer.getTripwire();
 
         int meta = hasDiscard?1:0;
         meta |= isMipped?2:0;
         return meta;
     }
 
-    private void bakeBlockModel(BlockState state, BlockRenderLayer layer) {
+    private void bakeBlockModel(BlockState state, RenderLayer layer) {
         if (state.getRenderType() == BlockRenderType.INVISIBLE) {
             return;//Dont bake if invisible
         }
@@ -67,18 +67,16 @@ public class ModelTextureBakery {
 
         int meta = getMetaFromLayer(layer);
 
-        for (var part : model.getParts(new LocalRandom(42L))) {
-            for (Direction direction : new Direction[]{Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST, null}) {
-                var quads = part.getQuads(direction);
-                for (var quad : quads) {
-                    this.vc.quad(quad, meta|(quad.hasTint()?4:0));
-                }
+        for (Direction direction : new Direction[]{Direction.DOWN, Direction.UP, Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST, null}) {
+            var quads = model.getQuads(state, direction, new LocalRandom(42L));
+            for (var quad : quads) {
+                this.vc.quad(quad, meta|(quad.hasColor()?4:0));
             }
         }
     }
 
 
-    private void bakeFluidState(BlockState state, BlockRenderLayer layer, int face) {
+    private void bakeFluidState(BlockState state, RenderLayer layer, int face) {
         {
             //TODO: somehow set the tint flag per quad or something?
             int metadata = getMetaFromLayer(layer);
@@ -155,7 +153,7 @@ public class ModelTextureBakery {
     }
 
     private static boolean shouldReturnAirForFluid(BlockPos pos, int face) {
-        var fv = Direction.byIndex(face).getVector();
+        var fv = Direction.byId(face).getVector();
         int dot = fv.getX()*pos.getX() + fv.getY()*pos.getY() + fv.getZ()*pos.getZ();
         return dot >= 1;
     }
@@ -169,13 +167,13 @@ public class ModelTextureBakery {
     public void renderToStream(BlockState state, int streamBuffer, int streamOffset) {
         this.capture.clear();
         boolean isBlock = true;
-        BlockRenderLayer layer;
+        RenderLayer layer;
         if (state.getBlock() instanceof FluidBlock) {
             layer = RenderLayers.getFluidLayer(state.getFluidState());
             isBlock = false;
         } else {
             if (state.getBlock() instanceof LeavesBlock) {
-                layer = BlockRenderLayer.SOLID;
+                layer = RenderLayer.getSolid();
             } else {
                 layer = RenderLayers.getBlockLayer(state);
             }
@@ -195,7 +193,7 @@ public class ModelTextureBakery {
             glEnable(GL_STENCIL_TEST);
             glEnable(GL_DEPTH_TEST);
             glEnable(GL_CULL_FACE);
-            if (layer == BlockRenderLayer.TRANSLUCENT) {
+            if (layer == RenderLayer.getTranslucent()) {
                 glEnable(GL_BLEND);
                 glBlendFuncSeparate(GL_ONE_MINUS_DST_ALPHA, GL_DST_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
             } else {
@@ -212,8 +210,7 @@ public class ModelTextureBakery {
             //Bind the capture framebuffer
             glBindFramebuffer(GL_FRAMEBUFFER, this.capture.framebuffer.id);
 
-            var tex = MinecraftClient.getInstance().getTextureManager().getTexture(Identifier.of("minecraft", "textures/atlas/blocks.png")).getGlTexture();
-            blockTextureId = ((net.minecraft.client.texture.GlTexture)tex).getGlId();
+            blockTextureId = MinecraftClient.getInstance().getTextureManager().getTexture(Identifier.of("minecraft", "textures/atlas/blocks.png")).getGlId();
         }
 
         //TODO: fastpath for blocks
@@ -319,7 +316,7 @@ public class ModelTextureBakery {
         glBindFramebuffer(GL_FRAMEBUFFER, this.capture.framebuffer.id);
         glClearDepth(1);
         glClear(GL_DEPTH_BUFFER_BIT);
-        if (layer == BlockRenderLayer.TRANSLUCENT) {
+        if (layer == RenderLayer.getTranslucent()) {
             //reset the blend func
             GL14.glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         }

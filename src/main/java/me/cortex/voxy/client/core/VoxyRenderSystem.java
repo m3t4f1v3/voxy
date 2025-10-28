@@ -1,7 +1,5 @@
 package me.cortex.voxy.client.core;
 
-import com.mojang.blaze3d.opengl.GlConst;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import me.cortex.voxy.client.TimingStatistics;
 import me.cortex.voxy.client.VoxyClient;
 import me.cortex.voxy.client.config.VoxyConfig;
@@ -32,11 +30,13 @@ import me.cortex.voxy.common.thread.ServiceManager;
 import me.cortex.voxy.common.world.WorldEngine;
 import me.cortex.voxy.commonImpl.VoxyCommon;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
-import net.caffeinemc.mods.sodium.client.util.FogParameters;
 import net.minecraft.client.MinecraftClient;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.lwjgl.opengl.GL11;
+
+import com.mojang.blaze3d.platform.GlConst;
+import com.mojang.blaze3d.platform.GlStateManager;
 
 import java.util.Arrays;
 import java.util.List;
@@ -157,7 +157,7 @@ public class VoxyRenderSystem {
     }
 
 
-    public Viewport<?> setupViewport(ChunkRenderMatrices matrices, FogParameters fogParameters, double cameraX, double cameraY, double cameraZ) {
+    public Viewport<?> setupViewport(ChunkRenderMatrices matrices, double cameraX, double cameraY, double cameraZ) {
         var viewport = this.getViewport();
         if (viewport == null) {
             return null;
@@ -195,7 +195,6 @@ public class VoxyRenderSystem {
                 .setModelView(new Matrix4f(matrices.modelView()))
                 .setCamera(cameraX, cameraY, cameraZ)
                 .setScreenSize(width, height)
-                .setFogParameters(fogParameters)
                 .update();
 
         if (VoxyClient.getOcclusionDebugState()==0) {
@@ -357,7 +356,7 @@ public class VoxyRenderSystem {
         var client = MinecraftClient.getInstance();
         var gameRenderer = client.gameRenderer;//tickCounter.getTickDelta(true);
 
-        float fov = gameRenderer.getFov(gameRenderer.getCamera(), client.getRenderTickCounter().getTickProgress(true), true);
+        float fov = (float)gameRenderer.getFov(gameRenderer.getCamera(), client.getRenderTickCounter().getTickDelta(true), true);
 
         projection.setPerspective(fov * 0.01745329238474369f,
                 (float) client.getWindow().getFramebufferWidth() / (float)client.getWindow().getFramebufferHeight(),

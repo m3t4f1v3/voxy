@@ -20,6 +20,8 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.world.LightType;
 import net.minecraft.world.chunk.ChunkStatus;
+
+import org.apache.commons.compress.harmony.pack200.NewAttributeBands.Call;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -39,7 +41,7 @@ public class MixinRenderSectionManager {
     @Shadow @Final private ChunkBuilder builder;
 
     @Inject(method = "<init>", at = @At("TAIL"))
-    private void voxy$resetChunkTracker(ClientWorld level, int renderDistance, SortBehavior sortBehavior, CommandList commandList, CallbackInfo ci) {
+    private void voxy$resetChunkTracker(ClientWorld level, int renderDistance, CommandList commandList, CallbackInfo ci) {
         if (level.worldRenderer != null) {
             var system = ((IGetVoxyRenderSystem)(level.worldRenderer)).getVoxyRenderSystem();
             if (system != null) {

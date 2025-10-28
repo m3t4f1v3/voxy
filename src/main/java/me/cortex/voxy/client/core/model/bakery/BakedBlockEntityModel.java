@@ -8,20 +8,9 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.block.MovingBlockRenderState;
-import net.minecraft.client.render.command.ModelCommandRenderer;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
-import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
-import net.minecraft.client.render.command.RenderCommandQueue;
-import net.minecraft.client.render.entity.state.EntityHitboxAndView;
-import net.minecraft.client.render.entity.state.EntityRenderState;
-import net.minecraft.client.render.item.ItemRenderState;
 import net.minecraft.client.render.model.BakedQuad;
-import net.minecraft.client.render.model.BlockStateModel;
-import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.texture.Sprite;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
@@ -51,7 +40,7 @@ public class BakedBlockEntityModel {
                 if (textureId == null) {
                     Logger.error("ERROR: Empty texture id for layer: " + layer);
                 } else {
-                    texId = ((net.minecraft.client.texture.GlTexture)MinecraftClient.getInstance().getTextureManager().getTexture(textureId).getGlTexture()).getGlId();
+                    texId = MinecraftClient.getInstance().getTextureManager().getTexture(textureId).getGlId();
                 }
             }
             if (texId == 0) continue;

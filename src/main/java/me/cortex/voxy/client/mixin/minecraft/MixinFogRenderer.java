@@ -3,28 +3,37 @@ package me.cortex.voxy.client.mixin.minecraft;
 import me.cortex.voxy.client.config.VoxyConfig;
 import me.cortex.voxy.client.core.IGetVoxyRenderSystem;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.fog.FogData;
-import net.minecraft.client.render.fog.FogRenderer;
-import org.objectweb.asm.Opcodes;
+import net.minecraft.client.render.BackgroundRenderer;
+import net.minecraft.client.render.Camera;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(FogRenderer.class)
+import com.mojang.blaze3d.systems.RenderSystem;
+
+@Mixin(BackgroundRenderer.class)
 public class MixinFogRenderer {
-    @Redirect(method = "applyFog(Lnet/minecraft/client/render/Camera;IZLnet/minecraft/client/render/RenderTickCounter;FLnet/minecraft/client/world/ClientWorld;)Lorg/joml/Vector4f;", at = @At(value = "FIELD", target = "Lnet/minecraft/client/render/fog/FogData;renderDistanceEnd:F", opcode = Opcodes.PUTFIELD), require = 0)
-    private void voxy$modifyFog(FogData instance, float distance) {
+    @Inject(
+        method = "applyFog(Lnet/minecraft/client/render/Camera;Lnet/minecraft/client/render/BackgroundRenderer$FogType;FZF)V",
+        at = @At("HEAD"),
+        cancellable = true
+    )
+    private static void voxy$overrideFog(
+        Camera camera,
+        BackgroundRenderer.FogType fogType,
+        float viewDistance,
+        boolean thickFog,
+        float tickDelta,
+        CallbackInfo ci
+    ) {
         var vrs = (IGetVoxyRenderSystem) MinecraftClient.getInstance().worldRenderer;
 
         if (VoxyConfig.CONFIG.renderVanillaFog || vrs == null || vrs.getVoxyRenderSystem() == null) {
-            instance.renderDistanceEnd = distance;
+            RenderSystem.setShaderFogEnd(viewDistance);
         } else {
-            instance.renderDistanceStart = 999999999;
-            instance.renderDistanceEnd = 999999999;
-            if (!VoxyConfig.CONFIG.useEnvironmentalFog) {
-                instance.environmentalStart = 99999999;
-                instance.environmentalEnd = 99999999;
-            }
+            RenderSystem.setShaderFogStart(999999999);
+            RenderSystem.setShaderFogEnd(999999999);
         }
     }
 }

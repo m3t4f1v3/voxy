@@ -11,12 +11,14 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.LeavesBlock;
 import net.minecraft.datafixer.Schemas;
 import net.minecraft.datafixer.TypeReferences;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.util.Pair;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.biome.Biome;
 import org.lwjgl.system.MemoryUtil;
 
@@ -354,7 +356,7 @@ public class Mapper {
             if (state.getBlock() instanceof LeavesBlock) {
                 this.opacity = 15;
             } else {
-                this.opacity = state.getOpacity();
+                this.opacity = state.getOpacity(MinecraftClient.getInstance().world, new BlockPos(0,0,0));
             }
         }
 
@@ -374,14 +376,14 @@ public class Mapper {
         public static StateEntry deserialize(int id, byte[] data, boolean[] forceResave) {
             try {
                 var compound = NbtIo.readCompressed(new ByteArrayInputStream(data), NbtSizeTracker.ofUnlimitedBytes());
-                if (compound.getInt("id", -1) != id) {
+                if (compound.getInt("id") != id) {
                     throw new IllegalStateException("Encoded id != expected id");
                 }
-                var bsc = compound.getCompound("block_state").orElseThrow();
+                var bsc = compound.getCompound("block_state");
                 var state = BlockState.CODEC.parse(NbtOps.INSTANCE, bsc);
                 if (state.isError()) {
                     Logger.info("Could not decode blockstate, attempting fixes, error: "+ state.error().get().message());
-                    bsc = (NbtCompound) Schemas.getFixer().update(TypeReferences.BLOCK_STATE, new Dynamic<>(NbtOps.INSTANCE,bsc),0, SharedConstants.getGameVersion().dataVersion().id()).getValue();
+                    bsc = (NbtCompound) Schemas.getFixer().update(TypeReferences.BLOCK_STATE, new Dynamic<>(NbtOps.INSTANCE,bsc),0, SharedConstants.getGameVersion().getSaveVersion().getId()).getValue();
                     state = BlockState.CODEC.parse(NbtOps.INSTANCE, bsc);
                     if (state.isError()) {
                         Logger.error("Could not decode blockstate setting to air. id:" + id + " error: " + state.error().get().message());
@@ -425,10 +427,10 @@ public class Mapper {
         public static BiomeEntry deserialize(int id, byte[] data) {
             try {
                 var compound = NbtIo.readCompressed(new ByteArrayInputStream(data), NbtSizeTracker.ofUnlimitedBytes());
-                if (compound.getInt("id", -1) != id) {
+                if (compound.getInt("id") != id) {
                     throw new IllegalStateException("Encoded id != expected id");
                 }
-                String biome = compound.getString("biome_id", null);
+                String biome = compound.getString("biome_id");
                 return new BiomeEntry(id, biome);
             } catch (IOException e) {
                 throw new RuntimeException(e);

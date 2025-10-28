@@ -5,7 +5,7 @@ accessible class net/minecraft/client/render/RenderLayer$MultiPhaseParameters
 
 accessible field net/minecraft/client/texture/SpriteContents image Lnet/minecraft/client/texture/NativeImage;
 accessible field net/minecraft/client/render/Frustum frustumIntersection Lorg/joml/FrustumIntersection;
-accessible field net/minecraft/client/color/block/BlockColors providers Lnet/minecraft/util/collection/IdList;
+#accessible field net/minecraft/client/color/block/BlockColors providers Lnet/minecraft/util/collection/IdList;
 accessible field net/minecraft/client/world/ClientWorld worldRenderer Lnet/minecraft/client/render/WorldRenderer;
 accessible field net/minecraft/world/biome/source/BiomeAccess seed J
 
@@ -15,17 +15,17 @@ accessible field net/minecraft/client/render/RenderLayer$MultiPhaseParameters te
 accessible field net/minecraft/client/render/RenderLayer$MultiPhase phases Lnet/minecraft/client/render/RenderLayer$MultiPhaseParameters;
 accessible field net/minecraft/client/network/ClientPlayerInteractionManager networkHandler Lnet/minecraft/client/network/ClientPlayNetworkHandler;
 
-accessible method net/minecraft/client/render/GameRenderer getFov (Lnet/minecraft/client/render/Camera;FZ)F
+accessible method net/minecraft/client/render/GameRenderer getFov (Lnet/minecraft/client/render/Camera;FZ)D
 accessible method net/minecraft/client/render/RenderPhase$TextureBase getId ()Ljava/util/Optional;
 
 accessible field net/minecraft/world/chunk/PalettedContainer data Lnet/minecraft/world/chunk/PalettedContainer$Data;
 accessible field net/minecraft/world/chunk/PalettedContainer$Data storage Lnet/minecraft/util/collection/PaletteStorage;
 accessible field net/minecraft/world/chunk/PalettedContainer$Data palette Lnet/minecraft/world/chunk/Palette;
 
-accessible field net/minecraft/client/gl/GlGpuBuffer id I
+#accessible field net/minecraft/client/gl/GlGpuBuffer id I
 
-accessible field net/minecraft/client/gl/GlCommandEncoder currentProgram Lnet/minecraft/client/gl/ShaderProgram;
-accessible field net/minecraft/client/gl/GlCommandEncoder currentPipeline Lcom/mojang/blaze3d/pipeline/RenderPipeline;
+#accessible field net/minecraft/client/gl/GlCommandEncoder currentProgram Lnet/minecraft/client/gl/ShaderProgram;
+#accessible field net/minecraft/client/gl/GlCommandEncoder currentPipeline Lcom/mojang/blaze3d/pipeline/RenderPipeline;
 
 accessible class net/minecraft/client/gl/GlDebug$DebugMessage
 
@@ -33,6 +33,9 @@ accessible class net/minecraft/client/world/ClientChunkManager$ClientChunkMap
 accessible method net/minecraft/client/world/ClientChunkManager$ClientChunkMap getChunk (I)Lnet/minecraft/world/chunk/WorldChunk;
 accessible method net/minecraft/client/world/ClientChunkManager$ClientChunkMap getIndex (II)I
 
+accessible field net/minecraft/client/render/LightmapTextureManager texture Lnet/minecraft/client/texture/NativeImageBackedTexture;
+
+accessible field com/mojang/blaze3d/systems/RenderSystem$ShapeIndexBuffer id I
 accessible field net/minecraft/client/texture/SpriteAtlasTexture mipLevel I
 
 accessible method net/minecraft/client/texture/MipmapHelper blend (IIIIZ)I

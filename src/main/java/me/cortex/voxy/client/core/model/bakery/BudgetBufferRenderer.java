@@ -1,20 +1,26 @@
 package me.cortex.voxy.client.core.model.bakery;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.textures.GpuTexture;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import me.cortex.voxy.client.core.gl.GlBuffer;
 import me.cortex.voxy.client.core.gl.GlVertexArray;
 import me.cortex.voxy.client.core.gl.shader.Shader;
 import me.cortex.voxy.client.core.gl.shader.ShaderType;
 import me.cortex.voxy.client.core.rendering.util.UploadStream;
-import net.minecraft.client.gl.GlGpuBuffer;
 import net.minecraft.client.render.BuiltBuffer;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.texture.AbstractTexture;
+
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryUtil;
 
+import static org.lwjgl.opengl.GL11.GL_FLOAT;
+import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
+import static org.lwjgl.opengl.GL11.GL_UNSIGNED_SHORT;
+import static org.lwjgl.opengl.GL11.glDrawElements;
 import static org.lwjgl.opengl.GL20.glUniformMatrix4fv;
 import static org.lwjgl.opengl.GL33.glBindSampler;
+import static org.lwjgl.opengl.GL42.GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT;
+import static org.lwjgl.opengl.GL42.glMemoryBarrier;
 import static org.lwjgl.opengl.GL45.*;
 
 public class BudgetBufferRenderer {
@@ -30,7 +36,9 @@ public class BudgetBufferRenderer {
     private static final GlBuffer indexBuffer;
     static {
         var i = RenderSystem.getSequentialBuffer(VertexFormat.DrawMode.QUADS);
-        int id = ((GlGpuBuffer) i.getIndexBuffer(4096*3*2)).id;
+        i.bindAndGrow(4096*3*2);
+        int id = i.id;
+
         if (i.getIndexType() != VertexFormat.IndexType.SHORT) {
             throw new IllegalStateException();
         }
@@ -47,7 +55,7 @@ public class BudgetBufferRenderer {
 
     private static GlBuffer immediateBuffer;
     private static int quadCount;
-    public static void drawFast(BuiltBuffer buffer, GpuTexture tex, Matrix4f matrix) {
+    public static void drawFast(BuiltBuffer buffer, AbstractTexture tex, Matrix4f matrix) {
         if (buffer.getDrawParameters().mode() != VertexFormat.DrawMode.QUADS) {
             throw new IllegalStateException("Fast only supports quads");
         }
@@ -58,7 +66,7 @@ public class BudgetBufferRenderer {
         size /= STRIDE;
         if (size%4 != 0) throw new IllegalStateException();
         size /= 4;
-        setup(MemoryUtil.memAddress(buff), size, ((net.minecraft.client.texture.GlTexture)tex).getGlId());
+        setup(MemoryUtil.memAddress(buff), size, tex.getGlId());
         buffer.close();
 
         render(matrix);

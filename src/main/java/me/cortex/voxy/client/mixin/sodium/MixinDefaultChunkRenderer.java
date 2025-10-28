@@ -15,7 +15,6 @@ import net.caffeinemc.mods.sodium.client.render.chunk.terrain.DefaultTerrainRend
 import net.caffeinemc.mods.sodium.client.render.chunk.terrain.TerrainRenderPass;
 import net.caffeinemc.mods.sodium.client.render.chunk.vertex.format.ChunkVertexType;
 import net.caffeinemc.mods.sodium.client.render.viewport.CameraTransform;
-import net.caffeinemc.mods.sodium.client.util.FogParameters;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -31,22 +30,22 @@ public abstract class MixinDefaultChunkRenderer extends ShaderChunkRenderer {
     }
 
     @Inject(method = "render", at = @At(value = "HEAD"), cancellable = true)
-    private void cancelThingie(ChunkRenderMatrices matrices, CommandList commandList, ChunkRenderListIterable renderLists, TerrainRenderPass renderPass, CameraTransform camera, FogParameters fogParameters, boolean indexedRenderingEnabled, CallbackInfo ci) {
+    private void cancelThingie(ChunkRenderMatrices matrices, CommandList commandList, ChunkRenderListIterable renderLists, TerrainRenderPass renderPass, CameraTransform camera, CallbackInfo ci) {
         if (VoxyClient.disableSodiumChunkRender()) {
-            super.begin(renderPass, fogParameters);
-            this.doRender(matrices, renderPass, camera, fogParameters);
+            super.begin(renderPass);
+            this.doRender(matrices, renderPass, camera);
             super.end(renderPass);
             ci.cancel();
         }
     }
 
     @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/caffeinemc/mods/sodium/client/render/chunk/ShaderChunkRenderer;end(Lnet/caffeinemc/mods/sodium/client/render/chunk/terrain/TerrainRenderPass;)V", shift = At.Shift.BEFORE))
-    private void injectRender(ChunkRenderMatrices matrices, CommandList commandList, ChunkRenderListIterable renderLists, TerrainRenderPass renderPass, CameraTransform camera, FogParameters fogParameters, boolean indexedRenderingEnabled, CallbackInfo ci) {
-        this.doRender(matrices, renderPass, camera, fogParameters);
+    private void injectRender(ChunkRenderMatrices matrices, CommandList commandList, ChunkRenderListIterable renderLists, TerrainRenderPass renderPass, CameraTransform camera, CallbackInfo ci) {
+        this.doRender(matrices, renderPass, camera);
     }
 
     @Unique
-    private void doRender(ChunkRenderMatrices matrices, TerrainRenderPass renderPass, CameraTransform camera, FogParameters fogParameters) {
+    private void doRender(ChunkRenderMatrices matrices, TerrainRenderPass renderPass, CameraTransform camera) {
         if (renderPass == DefaultTerrainRenderPasses.CUTOUT) {
             var renderer = ((IGetVoxyRenderSystem) MinecraftClient.getInstance().worldRenderer).getVoxyRenderSystem();
             if (renderer != null) {
@@ -54,7 +53,7 @@ public abstract class MixinDefaultChunkRenderer extends ShaderChunkRenderer {
                 if (IrisUtil.irisShaderPackEnabled()) {
                     viewport = renderer.getViewport();
                 } else {
-                    viewport = renderer.setupViewport(matrices, fogParameters, camera.x, camera.y, camera.z);
+                    viewport = renderer.setupViewport(matrices, camera.x, camera.y, camera.z);
                 }
                 renderer.renderOpaque(viewport);
             }

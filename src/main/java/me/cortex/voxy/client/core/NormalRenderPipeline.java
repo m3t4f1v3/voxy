@@ -39,7 +39,6 @@ public class NormalRenderPipeline extends AbstractRenderPipeline {
     private final GlFramebuffer fbSSAO = new GlFramebuffer();
     private final DepthFramebuffer fb = new DepthFramebuffer(GL_DEPTH24_STENCIL8);
 
-    private final boolean useEnvFog;
     private final FullscreenBlit finalBlit;
 
     private final Shader ssaoCompute = Shader.make()
@@ -48,9 +47,8 @@ public class NormalRenderPipeline extends AbstractRenderPipeline {
 
     protected NormalRenderPipeline(AsyncNodeManager nodeManager, NodeCleaner nodeCleaner, HierarchicalOcclusionTraverser traversal, BooleanSupplier frexSupplier) {
         super(nodeManager, nodeCleaner, traversal, frexSupplier);
-        this.useEnvFog = VoxyConfig.CONFIG.useEnvironmentalFog;
         this.finalBlit = new FullscreenBlit("voxy:post/blit_texture_depth_cutout.frag",
-                a->a.defineIf("USE_ENV_FOG", this.useEnvFog).define("EMIT_COLOUR"));
+                a->a.define("EMIT_COLOUR"));
     }
 
     @Override
@@ -105,14 +103,6 @@ public class NormalRenderPipeline extends AbstractRenderPipeline {
     @Override
     protected void finish(Viewport<?> viewport, int sourceFrameBuffer, int srcWidth, int srcHeight) {
         this.finalBlit.bind();
-        if (this.useEnvFog) {
-            float start = viewport.fogParameters.environmentalStart();
-            float end = viewport.fogParameters.environmentalEnd();
-            float invEndFogDelta = 1f/(end-start);
-            float endDistance = MinecraftClient.getInstance().gameRenderer.getViewDistanceBlocks()*1.5f;
-            glUniform3f(4, endDistance, invEndFogDelta, Math.abs(start)*invEndFogDelta);
-            glUniform3f(5, viewport.fogParameters.red(), viewport.fogParameters.green(), viewport.fogParameters.blue());
-        }
 
         glBindTextureUnit(3, this.colourSSAOTex.id);
 

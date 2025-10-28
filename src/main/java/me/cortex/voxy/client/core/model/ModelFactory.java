@@ -21,7 +21,7 @@ import net.minecraft.block.LeavesBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.color.block.BlockColorProvider;
-import net.minecraft.client.render.BlockRenderLayer;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.fluid.FluidState;
 import net.minecraft.registry.Registries;
@@ -71,7 +71,7 @@ public class ModelFactory {
         }
     }
 
-    private final Biome DEFAULT_BIOME = MinecraftClient.getInstance().world.getRegistryManager().getOrThrow(RegistryKeys.BIOME).get(BiomeKeys.PLAINS);
+    private final Biome DEFAULT_BIOME = MinecraftClient.getInstance().world.getRegistryManager().get(RegistryKeys.BIOME).get(BiomeKeys.PLAINS);
 
     public final ModelTextureBakery bakery;
 
@@ -247,7 +247,7 @@ public class ModelFactory {
     public void processAllThings() {
         var biomeEntry = this.biomeQueue.poll();
         while (biomeEntry != null) {
-            var biomeRegistry = MinecraftClient.getInstance().world.getRegistryManager().getOrThrow(RegistryKeys.BIOME);
+            var biomeRegistry = MinecraftClient.getInstance().world.getRegistryManager().get(RegistryKeys.BIOME);
             var res = this.addBiome0(biomeEntry.id, biomeRegistry.get(Identifier.of(biomeEntry.biome)));
             if (res != null) {
                 this.uploadResults.add(res);
@@ -385,19 +385,19 @@ public class ModelFactory {
             this.fluidStateLUT[modelId] = clientFluidStateId;
         }
 
-        BlockRenderLayer blockRenderLayer = null;
+        RenderLayer renderLayer = null;
         if (blockState.getBlock() instanceof FluidBlock) {
-            blockRenderLayer = RenderLayers.getFluidLayer(blockState.getFluidState());
+            renderLayer = RenderLayers.getFluidLayer(blockState.getFluidState());
         } else {
             if (blockState.getBlock() instanceof LeavesBlock) {
-                blockRenderLayer = BlockRenderLayer.SOLID;
+                renderLayer = RenderLayer.getSolid();
             } else {
-                blockRenderLayer = RenderLayers.getBlockLayer(blockState);
+                renderLayer = RenderLayers.getBlockLayer(blockState);
             }
         }
 
 
-        int checkMode = blockRenderLayer==BlockRenderLayer.SOLID?TextureUtils.WRITE_CHECK_STENCIL:TextureUtils.WRITE_CHECK_ALPHA;
+        int checkMode = renderLayer==RenderLayer.getSolid()?TextureUtils.WRITE_CHECK_STENCIL:TextureUtils.WRITE_CHECK_ALPHA;
 
 
         var colourProvider = getColourProvider(blockState.getBlock());
@@ -463,7 +463,7 @@ public class ModelFactory {
         //Each face gets 1 byte, with the top 2 bytes being for whatever
         long metadata = 0;
         metadata |= isBiomeColourDependent?1:0;
-        metadata |= blockRenderLayer == BlockRenderLayer.TRANSLUCENT?2:0;
+        metadata |= renderLayer == RenderLayer.getTranslucent()?2:0;
         metadata |= needsDoubleSidedQuads?4:0;
         metadata |= ((!isFluid) && !blockState.getFluidState().isEmpty())?8:0;//Has a fluid state accosiacted with it and is not itself a fluid
         metadata |= isFluid?16:0;//Is a fluid
@@ -499,7 +499,7 @@ public class ModelFactory {
 
             //TODO: add alot of config options for the following
             boolean occludesFace = true;
-            occludesFace &= blockRenderLayer != BlockRenderLayer.TRANSLUCENT;//If its translucent, it doesnt occlude
+            occludesFace &= renderLayer != RenderLayer.getTranslucent();//If its translucent, it doesnt occlude
 
             //TODO: make this an option, basicly if the face is really close, it occludes otherwise it doesnt
             occludesFace &= offset < 0.1;//If the face is rendered far away from the other face, then it doesnt occlude
@@ -519,7 +519,7 @@ public class ModelFactory {
             metadata |= canBeOccluded?4:0;
 
             //Face uses its own lighting if its not flat against the adjacent block & isnt traslucent
-            metadata |= (offset > 0.01 || blockRenderLayer == BlockRenderLayer.TRANSLUCENT)?0b1000:0;
+            metadata |= (offset > 0.01 || renderLayer == RenderLayer.getTranslucent())?0b1000:0;
 
 
 
@@ -542,11 +542,11 @@ public class ModelFactory {
             int area = (faceSize[1]-faceSize[0]+1) * (faceSize[3]-faceSize[2]+1);
             boolean needsAlphaDiscard = ((float)writeCount)/area<0.9;//If the amount of area covered by written pixels is less than a threashold, disable discard as its not needed
 
-            needsAlphaDiscard |= blockRenderLayer != BlockRenderLayer.SOLID;
-            needsAlphaDiscard &= blockRenderLayer != BlockRenderLayer.TRANSLUCENT;//Translucent doesnt have alpha discard
+            needsAlphaDiscard |= renderLayer != RenderLayer.getSolid();
+            needsAlphaDiscard &= renderLayer != RenderLayer.getTranslucent();//Translucent doesnt have alpha discard
             faceModelData |= needsAlphaDiscard?1<<22:0;
 
-            faceModelData |= ((!faceCoversFullBlock)&&blockRenderLayer != BlockRenderLayer.TRANSLUCENT)?1<<23:0;//Alpha discard override, translucency doesnt have alpha discard
+            faceModelData |= ((!faceCoversFullBlock)&&renderLayer != RenderLayer.getTranslucent())?1<<23:0;//Alpha discard override, translucency doesnt have alpha discard
 
             //Bits 24,25 are tint metadata
             if (colourProvider!=null) {//We have a tint
@@ -574,8 +574,8 @@ public class ModelFactory {
         int modelFlags = 0;
         modelFlags |= colourProvider != null?1:0;
         modelFlags |= isBiomeColourDependent?2:0;//Basicly whether to use the next int as a colour or as a base index/id into a colour buffer for biome dependent colours
-        modelFlags |= blockRenderLayer == BlockRenderLayer.TRANSLUCENT?4:0;//Is translucent
-        modelFlags |= blockRenderLayer == BlockRenderLayer.CUTOUT?0:8;//Dont use mipmaps (AND ALSO FKING SPECIFIES IF IT HAS AO, WHY??? GREAT QUESTION, TODO FIXE THIS)
+        modelFlags |= renderLayer == RenderLayer.getTranslucent()?4:0;//Is translucent
+        modelFlags |= renderLayer == RenderLayer.getCutout()?0:8;//Dont use mipmaps (AND ALSO FKING SPECIFIES IF IT HAS AO, WHY??? GREAT QUESTION, TODO FIXE THIS)
 
         //modelFlags |= blockRenderLayer == RenderLayer.getSolid()?0:1;// should discard alpha
         MemoryUtil.memPutInt(uploadPtr, modelFlags); uploadPtr += 4;
@@ -707,7 +707,13 @@ public class ModelFactory {
     }
 
     private static BlockColorProvider getColourProvider(Block block) {
-        return MinecraftClient.getInstance().getBlockColors().providers.get(Registries.BLOCK.getRawId(block));
+        BlockState defaultState = block.getDefaultState();
+        var blockColors = MinecraftClient.getInstance().getBlockColors();
+        int color = blockColors.getColor(defaultState, null, BlockPos.ORIGIN, 0);
+        if (color != 0) {
+            return (state, world, pos, tintIndex) -> blockColors.getColor(state, world, pos, tintIndex);
+        }
+        return null;
     }
 
     //TODO: add a method to detect biome dependent colours (can do by detecting if getColor is ever called)
@@ -819,7 +825,7 @@ public class ModelFactory {
     private static float[] computeModelDepth(ColourDepthTextureData[] textures, int checkMode) {
         float[] res = new float[6];
         for (var dir : Direction.values()) {
-            var data = textures[dir.getIndex()];
+            var data = textures[dir.getId()];
             float fd = TextureUtils.computeDepth(data, TextureUtils.DEPTH_MODE_AVG, checkMode);//Compute the min float depth, smaller means closer to the camera, range 0-1
             //int depth = Math.round(fd * MODEL_TEXTURE_SIZE);
             //If fd is -1, it means that there was nothing rendered on that face and it should be discarded

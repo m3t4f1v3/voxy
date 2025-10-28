@@ -71,9 +71,9 @@ public class DHImporter implements IDataImporter {
     public DHImporter(File file, WorldEngine worldEngine, World mcWorld, ServiceManager servicePool, BooleanSupplier rateLimiter) {
         this.engine = worldEngine;
         this.world = mcWorld;
-        this.biomeRegistry = mcWorld.getRegistryManager().getOrThrow(RegistryKeys.BIOME);
-        this.defaultBiome = this.biomeRegistry.getOrThrow(BiomeKeys.PLAINS);
-        this.blockRegistry = mcWorld.getRegistryManager().getOrThrow(RegistryKeys.BLOCK);
+        this.biomeRegistry = mcWorld.getRegistryManager().get(RegistryKeys.BIOME);
+        this.defaultBiome = this.biomeRegistry.getEntry(BiomeKeys.PLAINS).get();
+        this.blockRegistry = mcWorld.getRegistryManager().get(RegistryKeys.BLOCK);
 
         this.bottomOfWorld = mcWorld.getBottomY();
         int worldHeight = mcWorld.getHeight();

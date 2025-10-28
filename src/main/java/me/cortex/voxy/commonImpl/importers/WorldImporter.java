@@ -11,13 +11,17 @@ import me.cortex.voxy.common.voxelization.VoxelizedSection;
 import me.cortex.voxy.common.voxelization.WorldConversionFactory;
 import me.cortex.voxy.common.world.WorldEngine;
 import me.cortex.voxy.common.world.WorldUpdater;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.util.collection.IndexedIterable;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.biome.BiomeKeys;
@@ -47,7 +51,6 @@ public class WorldImporter implements IDataImporter {
     private final WorldEngine world;
     private final ReadableContainer<RegistryEntry<Biome>> defaultBiomeProvider;
     private final Codec<ReadableContainer<RegistryEntry<Biome>>> biomeCodec;
-    private final Codec<PalettedContainer<BlockState>> blockStateCodec;
     private final AtomicInteger estimatedTotalChunks = new AtomicInteger();//Slowly converges to the true value
     private final AtomicInteger totalChunks = new AtomicInteger();
     private final AtomicInteger chunksProcessed = new AtomicInteger();
@@ -61,8 +64,8 @@ public class WorldImporter implements IDataImporter {
         this.world = worldEngine;
         this.service = sm.createService(()->new Pair<>(()->this.jobQueue.poll().run(), ()->{}), 3, "World importer", runChecker);
 
-        var biomeRegistry = mcWorld.getRegistryManager().getOrThrow(RegistryKeys.BIOME);
-        var defaultBiome = biomeRegistry.getOrThrow(BiomeKeys.PLAINS);
+        var biomeRegistry = mcWorld.getRegistryManager().get(RegistryKeys.BIOME);
+        var defaultBiome = biomeRegistry.getEntry(BiomeKeys.PLAINS).get();
         this.defaultBiomeProvider = new ReadableContainer<>() {
             @Override
             public RegistryEntry<Biome> get(int x, int y, int z) {
@@ -84,10 +87,10 @@ public class WorldImporter implements IDataImporter {
                 return 0;
             }
 
-            @Override
-            public int getElementBits() {
-                return 0;
-            }
+            // @Override
+            // public int getElementBits() {
+            //     return 0;
+            // }
 
             @Override
             public boolean hasAny(Predicate<RegistryEntry<Biome>> predicate) {
@@ -100,24 +103,19 @@ public class WorldImporter implements IDataImporter {
             }
 
             @Override
-            public PalettedContainer<RegistryEntry<Biome>> copy() {
-                return null;
-            }
-
-            @Override
             public PalettedContainer<RegistryEntry<Biome>> slice() {
                 return null;
             }
 
             @Override
-            public Serialized<RegistryEntry<Biome>> serialize(PaletteProvider<RegistryEntry<Biome>> provider) {
+            public Serialized<RegistryEntry<Biome>> serialize(IndexedIterable<RegistryEntry<Biome>> idList, PalettedContainer.PaletteProvider paletteProvider) {
                 return null;
             }
         };
 
-        var factory = PalettesFactory.fromRegistryManager(mcWorld.getRegistryManager());
-        this.biomeCodec = factory.biomeContainerCodec();
-        this.blockStateCodec = factory.blockStatesContainerCodec();
+        this.biomeCodec = PalettedContainer.createReadableContainerCodec(
+                biomeRegistry.getIndexedEntries(), biomeRegistry.getEntryCodec(), PalettedContainer.PaletteProvider.BIOME, biomeRegistry.entryOf(BiomeKeys.PLAINS)
+        );
     }
 
 
@@ -441,22 +439,22 @@ public class WorldImporter implements IDataImporter {
         }
 
         //Dont process non full chunk sections
-        var status = ChunkStatus.byId(chunk.getString("Status", null));
+        var status = ChunkStatus.byId(chunk.getString("Status"));
         if (status != ChunkStatus.FULL && status != ChunkStatus.EMPTY) {//We also import empty since they are from data upgrade
             this.totalChunks.decrementAndGet();
             return;
         }
 
         try {
-            int x = chunk.getInt("xPos", Integer.MIN_VALUE);
-            int z = chunk.getInt("zPos", Integer.MIN_VALUE);
+            int x = chunk.getInt("xPos");
+            int z = chunk.getInt("zPos");
             if (x>>5 != regionX || z>>5 != regionZ) {
                 Logger.error("Chunk position is not located in correct region, expected: (" + regionX + ", " + regionZ+"), got: " + "(" + (x>>5) + ", " + (z>>5)+"), importing anyway");
             }
 
-            for (var sectionE : chunk.getList("sections").orElseThrow()) {
+            for (var sectionE : chunk.getList("sections", NbtElement.COMPOUND_TYPE)) {
                 var section = (NbtCompound) sectionE;
-                int y = section.getInt("Y", Integer.MIN_VALUE);
+                int y = section.getInt("Y");
                 this.importSectionNBT(x, y, z, section);
             }
         } catch (Exception e) {
@@ -466,15 +464,15 @@ public class WorldImporter implements IDataImporter {
         this.updateCallback.onUpdate(this.chunksProcessed.incrementAndGet(), this.estimatedTotalChunks.get());
     }
 
-    private static final byte[] EMPTY = new byte[0];
     private static final ThreadLocal<VoxelizedSection> SECTION_CACHE = ThreadLocal.withInitial(VoxelizedSection::createEmpty);
+    private static final Codec<PalettedContainer<BlockState>> BLOCK_STATE_CODEC = PalettedContainer.createPalettedContainerCodec(Block.STATE_IDS, BlockState.CODEC, PalettedContainer.PaletteProvider.BLOCK_STATE, Blocks.AIR.getDefaultState());
     private void importSectionNBT(int x, int y, int z, NbtCompound section) {
         if (section.getCompound("block_states").isEmpty()) {
             return;
         }
 
-        byte[] blockLightData = section.getByteArray("BlockLight").orElse(EMPTY);
-        byte[] skyLightData = section.getByteArray("SkyLight").orElse(EMPTY);
+        byte[] blockLightData = section.getByteArray("BlockLight");
+        byte[] skyLightData = section.getByteArray("SkyLight");
 
         ChunkNibbleArray blockLight;
         if (blockLightData.length != 0) {
@@ -490,7 +488,7 @@ public class WorldImporter implements IDataImporter {
             skyLight = null;
         }
 
-        var blockStatesRes = blockStateCodec.parse(NbtOps.INSTANCE, section.getCompound("block_states").get());
+        var blockStatesRes = BLOCK_STATE_CODEC.parse(NbtOps.INSTANCE, section.getCompound("block_states"));
         if (!blockStatesRes.hasResultOrPartial()) {
             //TODO: if its only partial, it means should try to upgrade the nbt format with datafixerupper probably
             return;
@@ -498,8 +496,8 @@ public class WorldImporter implements IDataImporter {
         var blockStates = blockStatesRes.getPartialOrThrow();
         var biomes = this.defaultBiomeProvider;
         var optBiomes = section.getCompound("biomes");
-        if (optBiomes.isPresent()) {
-            biomes = this.biomeCodec.parse(NbtOps.INSTANCE, optBiomes.get()).result().orElse(this.defaultBiomeProvider);
+        if (!optBiomes.isEmpty()) {
+            biomes = this.biomeCodec.parse(NbtOps.INSTANCE, optBiomes).result().orElse(this.defaultBiomeProvider);
         }
         VoxelizedSection csec = WorldConversionFactory.convert(
                 SECTION_CACHE.get().setPosition(x, y, z),

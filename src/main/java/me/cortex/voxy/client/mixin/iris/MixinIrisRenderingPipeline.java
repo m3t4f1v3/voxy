@@ -41,7 +41,7 @@ public class MixinIrisRenderingPipeline implements IGetVoxyPatchData, IGetIrisVo
         }
     }
 
-    @Inject(method = "beginLevelRendering", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/opengl/GlStateManager;_activeTexture(I)V", shift = At.Shift.BEFORE), remap = true)
+    @Inject(method = "beginLevelRendering", at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/RenderSystem;activeTexture(I)V", shift = At.Shift.BEFORE), remap = true)
     private void voxy$injectViewportSetup(CallbackInfo ci) {
         if (IrisUtil.CAPTURED_VIEWPORT_PARAMETERS != null) {
             var renderer = ((IGetVoxyRenderSystem) MinecraftClient.getInstance().worldRenderer).getVoxyRenderSystem();
