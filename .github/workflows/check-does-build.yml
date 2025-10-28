@@ -1,3 +1,4 @@
+# === Auto-updated by ChatGPT: adds artifact upload for all built JARs ===
 name: check-does-build
 
 on: [ push ]
@@ -30,3 +31,13 @@ jobs:
 
       - name: Gradle build
         run: ./gradlew -I init.gradle build
+
+      # 🟩 Upload every built JAR from any Gradle subproject
+      - name: Upload built jars (all modules)
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxy-built-jars-${{ github.ref_name }}-${{ github.sha }}
+          path: |
+            **/build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 14
