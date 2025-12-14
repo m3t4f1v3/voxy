@@ -11,9 +11,9 @@ import com.seibel.distanthorizons.core.api.internal.SharedApi;
 import com.seibel.distanthorizons.core.level.IDhLevel;
 import com.seibel.distanthorizons.core.wrapperInterfaces.chunk.IChunkWrapper;
 
-import loaderCommon.fabric.com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper;
 import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.common.world.service.VoxelIngestService;
+import net.minecraft.world.level.chunk.ChunkAccess;
 // import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 
@@ -32,15 +32,19 @@ public class MixinSharedApi {
             boolean canGetNeighboringChunks,
             CallbackInfo ci
     ) {
-        if (!(chunkWrapper instanceof ChunkWrapper cw)) {
-            Logger.error("DH MixinSharedApi: chunkWrapper is not a ChunkWrapper!");
-            throw new IllegalArgumentException("DH MixinSharedApi: chunkWrapper is not a ChunkWrapper!");
-            // return;
+        ChunkAccess chunkAccess;
+        if (chunkWrapper instanceof loaderCommon.fabric.com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper cw) {
+            chunkAccess = cw.getChunk();
+        } else if (chunkWrapper instanceof loaderCommon.forge.com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper cw) {
+            chunkAccess = cw.getChunk();
+        } else {
+            Logger.error("DH MixinSharedApi: Unknown chunk wrapper class: " + chunkWrapper.getClass().getName());
+            return;
         }
-        if (!(cw.getChunk() instanceof LevelChunk wc)) {
-            Logger.error("DH MixinSharedApi: chunkWrapper.getChunk() is not a LevelChunk!");
-            // return;
-            throw new IllegalArgumentException("DH MixinSharedApi: chunkWrapper.getChunk() is not a LevelChunk!");
+
+        if (!(chunkAccess instanceof LevelChunk wc)) {
+            Logger.error("DH MixinSharedApi: ChunkAccess is not LevelChunk: " + chunkAccess.getClass().getName());
+            return;
         }
 
         // for (int x = 0; x < 16; x++) {

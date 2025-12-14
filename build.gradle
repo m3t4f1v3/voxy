@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version "1.10-SNAPSHOT"
+    id 'fabric-loom' version "1.13-SNAPSHOT"
     id 'maven-publish'
 }
 
@@ -13,6 +13,7 @@ base {
 }
 
 repositories {
+    mavenLocal()
     exclusiveContent {
         forRepository {
             maven {
@@ -26,6 +27,7 @@ repositories {
     }
     maven { url = "https://maven.shedaniel.me/" }
     maven { url = "https://maven.terraformersmc.com/releases/" }
+    maven { url = "https://repo.enonic.com/public/"}
 
     exclusiveContent {
         forRepository {
@@ -158,8 +160,11 @@ dependencies {
 
     // implementation("maven.modrinth:DistantHorizonsApi:4.1.0")
     // i know should be runtime only but BLAHHH
-    modCompileOnly("maven.modrinth:DistantHorizons:2.3.6-b-1.20.1")
-    modRuntimeOnlyMsk("maven.modrinth:DistantHorizons:2.3.6-b-1.20.1")
+    // modCompileOnly("com.seibel.distanthorizons:core:core-2.4.1-b-dev-1.20.1")
+    // modCompileOnly("com.seibel.distanthorizons:DistantHorizons:common-2.4.1-b-dev-1.20.1")
+    // modRuntimeOnlyMsk("com.seibel.distanthorizons:DistantHorizons:fabric-2.4.1-b-dev-1.20.1")
+    modCompileOnly("maven.modrinth:DistantHorizons:2.4.0-b-1.20.1")
+    modRuntimeOnlyMsk("maven.modrinth:DistantHorizons:2.4.0-b-1.20.1")
     modRuntimeOnlyMsk("maven.modrinth:indium:1.0.36+mc1.20.1")
 }
 
