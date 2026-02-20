@@ -69,8 +69,10 @@ public class VoxyConfig implements OptionStorage<VoxyConfig> {
             config.save();
             return config;
         } else {
-            VoxyCommon.createInstance();
-            return loadOrCreate();
+            var config = new VoxyConfig();
+            config.enabled = false;
+            config.enableRendering = false;
+            return config;
         }
     }
 
