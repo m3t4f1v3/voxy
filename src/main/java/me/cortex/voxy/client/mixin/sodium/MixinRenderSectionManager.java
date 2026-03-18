@@ -146,8 +146,32 @@ public class MixinRenderSectionManager {
             //TODO: on chunk remove do ingest if is surrounded by built chunks (or when the tracker says is ok)
 
             system.chunkBoundRenderer.removeSection(pos);
-        } else {//Add
+        } else {//Add — chunk newly built for the first time
             system.chunkBoundRenderer.addSection(pos);
+
+            // FIX: ingest newly explored chunks here, where Sodium has already compiled
+            // the geometry and lighting is guaranteed to be available. The onChunkAdded
+            // hook fires too early (before lighting arrives for freshly generated chunks).
+            if (VoxyConfig.CONFIG.ingestEnabled) {
+                var tracker = ((AccessorChunkTracker)ChunkTrackerHolder.get(this.world)).getChunkStatus();
+                long key = ChunkPos.asLong(x, z);
+                if (key != this.cachedChunkPos) {
+                    this.cachedChunkPos = key;
+                    this.cachedChunkStatus = tracker.getOrDefault(key, 0);
+                }
+                // Status 3 = chunk has all surrounding neighbours loaded (LIGHT_AND_BIOMES),
+                // so lighting is complete and safe to read.
+                if (this.cachedChunkStatus == 3) {
+                    var section = this.world.getChunk(x, z).getSection(y - this.bottomSectionY);
+                    var lp = this.world.getLightEngine();
+                    var csp = SectionPos.of(x, y, z);
+                    var blp = lp.getLayerListener(LightLayer.BLOCK).getDataLayerData(csp);
+                    var slp = lp.getLayerListener(LightLayer.SKY).getDataLayerData(csp);
+                    VoxelIngestService.rawIngest(system.getEngine(), section, x, y, z,
+                            blp == null ? null : blp.copy(),
+                            slp == null ? null : slp.copy());
+                }
+            }
         }
         return;
     }
