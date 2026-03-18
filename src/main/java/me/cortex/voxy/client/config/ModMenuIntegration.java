@@ -2,11 +2,13 @@ package me.cortex.voxy.client.config;
 
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
-import java.lang.reflect.Constructor;
-import java.util.Arrays;
+
+import me.cortex.voxy.client.mixin.sodium.AccessorSodiumOptionsGUI;
 import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.commonImpl.VoxyCommon;
+import me.jellysquid.mods.sodium.client.SodiumClientMod;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
+import me.jellysquid.mods.sodium.client.gui.screen.ConfigCorruptedScreen;
 import net.minecraft.client.gui.screens.Screen;
 
 public class ModMenuIntegration implements ModMenuApi {
@@ -14,21 +16,10 @@ public class ModMenuIntegration implements ModMenuApi {
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
         return parent -> {
             if (VoxyCommon.isAvailable()) {
-				//Sorry jelly and douira, please dont hurt me
-				
-                SodiumOptionsGUI screen = null;
-				if (Arrays.stream(SodiumOptionsGUI.class.getMethods()).anyMatch(method -> method.getName().equals("createScreen"))) {
-					screen = (SodiumOptionsGUI) SodiumOptionsGUI.createScreen(parent);
-				}
+                Screen screen = SodiumClientMod.options().isReadOnly() ? new ConfigCorruptedScreen(parent, AccessorSodiumOptionsGUI::newScreen) : AccessorSodiumOptionsGUI.newScreen(parent);
+                //Sorry jelly and douira, please dont hurt me
 				
                 try {
-					if (screen == null) {
-						// Embeddium support
-						Constructor<SodiumOptionsGUI> constructor = SodiumOptionsGUI.class.getDeclaredConstructor(Screen.class);
-						constructor.setAccessible(true);
-						screen = constructor.newInstance(parent);
-					}
-					
                     //We cant use .setPage() as that invokes rebuildGui, however the screen hasnt been initalized yet
                     // causing things to crash
                     var field = SodiumOptionsGUI.class.getDeclaredField("currentPage");

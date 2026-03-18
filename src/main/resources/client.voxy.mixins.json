@@ -31,6 +31,7 @@
     "nvidium.MixinRenderPipeline",
     "sodium.AccessorChunkTracker",
     "sodium.AccessorSodiumWorldRenderer",
+    "sodium.AccessorSodiumOptionsGUI",
     "sodium.MixinChunkJobQueue",
     // "sodium.MixinDefaultChunkRenderer",
     "sodium.MixinRenderSectionManager",
