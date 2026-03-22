@@ -1,6 +1,7 @@
 {
   "required": true,
   "package": "me.cortex.voxy.client.mixin",
+  "plugin": "me.cortex.voxy.client.mixin.ClientVoxyMixinPlugin",
   "compatibilityLevel": "JAVA_17",
   "client": [
     // "flashback.MixinFlashbackMeta",
@@ -30,12 +31,12 @@
     "minecraft.MixinWindow",
     "nvidium.MixinRenderPipeline",
     "sodium.AccessorChunkTracker",
+    "sodium.AccessorSodiumOptionsGUI",
     "sodium.AccessorSodiumWorldRenderer",
     "sodium.MixinChunkJobQueue",
     "sodium.MixinDefaultChunkRenderer",
     // "sodium.MixinRenderRegionManager",
     "sodium.MixinRenderSectionManager",
-    "sodium.MixinSodiumWorldRenderer",
     "sodium.MixinSodiumOptionsGUI"
   ],
   "injectors": {
