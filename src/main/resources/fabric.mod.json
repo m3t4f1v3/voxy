@@ -43,5 +43,8 @@
     "fabric-api": ">=0.91.1",
     "sodium": ">=0.5.13"
   },
+  "suggests": {
+    "java": ">=21"
+  },
   "accessWidener": "voxy.accesswidener"
 }
