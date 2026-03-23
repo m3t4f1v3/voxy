@@ -1,6 +1,28 @@
 package me.cortex.voxy.client.core.util;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
 public class ExpansionUtil {
+    private static final MethodHandle INT_COMPRESS;
+    private static final MethodHandle INT_EXPAND;
+    private static final MethodHandle LONG_COMPRESS;
+    private static final MethodHandle LONG_EXPAND;
+
+    static {
+        INT_COMPRESS = getMethodHandle(Integer.class, "compress", MethodType.methodType(int.class, int.class, int.class));
+        INT_EXPAND = getMethodHandle(Integer.class, "expand", MethodType.methodType(int.class, int.class, int.class));
+        LONG_COMPRESS = getMethodHandle(Long.class, "compress", MethodType.methodType(long.class, long.class, long.class));
+        LONG_EXPAND = getMethodHandle(Long.class, "expand", MethodType.methodType(long.class, long.class, long.class));
+    }
+
+    private static MethodHandle getMethodHandle(Class<?> clazz, String name, MethodType methodType) {
+        try {
+            return MethodHandles.lookup().findStatic(clazz, name, methodType);
+        } catch (Throwable ignored) {}
+        return null;
+    }
 
     private static int parallelSuffix(int maskCount) {
         int maskPrefix = maskCount ^ (maskCount << 1);
@@ -11,8 +33,15 @@ public class ExpansionUtil {
         return maskPrefix;
     }
 
-    // taken straight from OpenJDK code
     public static int expand(int i, int mask) {
+        if (INT_EXPAND != null) {
+            try {
+                return (int)INT_EXPAND.invokeExact(i, mask);
+            } catch (Throwable ignored) {}
+        }
+
+        // taken straight from OpenJDK code
+
         // Save original mask
         int originalMask = mask;
         // Count 0's to right
@@ -65,6 +94,12 @@ public class ExpansionUtil {
     }
 
     public static int compress(int i, int mask) {
+        if (INT_COMPRESS != null) {
+            try {
+                return (int) INT_COMPRESS.invokeExact(i, mask);
+            } catch (Throwable ignored) {}
+        }
+
         // See Hacker's Delight (2nd ed) section 7.4 Compress, or Generalized Extract
 
         i = i & mask; // Clear irrelevant bits
@@ -99,6 +134,12 @@ public class ExpansionUtil {
     }
 
     public static long expand(long i, long mask) {
+        if (LONG_EXPAND != null) {
+            try {
+                return (long)LONG_EXPAND.invokeExact(i, mask);
+            } catch (Throwable ignored) {}
+        }
+
         // Save original mask
         long originalMask = mask;
         // Count 0's to right
@@ -160,6 +201,12 @@ public class ExpansionUtil {
     }
 
     public static long compress(long i, long mask) {
+        if (LONG_COMPRESS != null) {
+            try {
+                return (long)LONG_COMPRESS.invokeExact(i, mask);
+            } catch (Throwable ignored) {}
+        }
+
         // See Hacker's Delight (2nd ed) section 7.4 Compress, or Generalized Extract
 
         i = i & mask; // Clear irrelevant bits
@@ -184,6 +231,6 @@ public class ExpansionUtil {
     }
 
     public static boolean isJava21() {
-        return false;
+        return INT_COMPRESS != null;
     }
 }
