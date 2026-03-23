@@ -172,9 +172,9 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
-    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    def javaVersion = JavaVersion.toVersion(21)
     if (JavaVersion.current() < javaVersion) {
-        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+        toolchain.languageVersion = JavaLanguageVersion.of(21)
     }
 
     // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
@@ -185,7 +185,38 @@ java {
     //withSourcesJar()
 }
 
-jar {
+sourceSets {
+    main {
+        java.srcDirs = ['src/main/java']
+    }
+    java21 {
+        java.srcDirs = ['src/java21/java']
+        compileClasspath += sourceSets.main.output
+    }
+}
+
+tasks.register('compileJava21', JavaCompile) {
+    source = sourceSets.java21.java
+    classpath = sourceSets.java21.compileClasspath
+    destinationDirectory = layout.buildDirectory.dir("classes/java21")
+
+    options.release = 21
+}
+
+tasks.jar {
+    dependsOn(tasks.compileJava21)
+
+    from(tasks.compileJava21.destinationDirectory) {
+        into("META-INF/versions/21")
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+
+    manifest {
+        attributes(
+                "Multi-Release": "true"
+        )
+    }
+
     from("LICENSE") {
         rename { "${it}_${project.archives_base_name}"}
     }
@@ -239,6 +270,13 @@ processIncludeJars {
 }
 
 remapJar {
+    dependsOn(tasks.compileJava21)
+
+    from(tasks.compileJava21.destinationDirectory) {
+        into("META-INF/versions/21")
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+
     doFirst {
         delete fileTree(getDestinationDirectory().get())
     }

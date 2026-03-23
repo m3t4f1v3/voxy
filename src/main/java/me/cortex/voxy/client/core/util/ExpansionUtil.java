@@ -1,6 +1,6 @@
 package me.cortex.voxy.client.core.util;
 
-public class ExpansionUgly {
+public class ExpansionUtil {
 
     private static int parallelSuffix(int maskCount) {
         int maskPrefix = maskCount ^ (maskCount << 1);
@@ -181,5 +181,9 @@ public class ExpansionUgly {
             maskCount = maskCount & ~maskPrefix;
         }
         return i;
+    }
+
+    public static boolean isJava21() {
+        return false;
     }
 }

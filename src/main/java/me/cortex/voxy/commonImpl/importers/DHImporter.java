@@ -1,6 +1,6 @@
 package me.cortex.voxy.commonImpl.importers;
 
-import me.cortex.voxy.client.core.util.ExpansionUgly;
+import me.cortex.voxy.client.core.util.ExpansionUtil;
 import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.common.thread.Service;
 import me.cortex.voxy.common.thread.ServiceManager;
@@ -343,8 +343,8 @@ public class DHImporter implements IDataImporter {
         byte[] col = ctx.colScratch;
         for (int x = 0; x < 64; x++) {
             for (int z = 0; z < 64; z++) {
-                int bPos = ExpansionUgly.expand(x&0xF, 0b00_00_0000_0000_1111) |
-                           ExpansionUgly.expand(z, 0b00_11_0000_1111_0000);
+                int bPos = ExpansionUtil.expand(x&0xF, 0b00_00_0000_0000_1111) |
+                           ExpansionUtil.expand(z, 0b00_11_0000_1111_0000);
                 short cl = stream.readShort();
                 if (cl < 0) {
                     throw new IllegalStateException();
@@ -360,8 +360,8 @@ public class DHImporter implements IDataImporter {
                     //    int a = 0;
                     //}
                     //Insert all entries into data cache
-                    startY = ExpansionUgly.expand(startY, 0b11111111_00_1111_0000_0000);
-                    endY = ExpansionUgly.expand(endY, 0b11111111_00_1111_0000_0000);
+                    startY = ExpansionUtil.expand(startY, 0b11111111_00_1111_0000_0000);
+                    endY = ExpansionUtil.expand(endY, 0b11111111_00_1111_0000_0000);
                     final int Msk = 0b11111111_00_1111_0000_0000;
                     final int iMsk1 = (~Msk)+1;
                     for (int y = startY; y != endY; y = (y+iMsk1)&Msk) {

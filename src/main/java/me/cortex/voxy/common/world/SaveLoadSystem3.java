@@ -1,7 +1,7 @@
 package me.cortex.voxy.common.world;
 
 import it.unimi.dsi.fastutil.longs.Long2ShortOpenHashMap;
-import me.cortex.voxy.client.core.util.ExpansionUgly;
+import me.cortex.voxy.client.core.util.ExpansionUtil;
 import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.common.util.MemoryBuffer;
 import me.cortex.voxy.common.util.ThreadLocalMemoryBuffer;
@@ -21,15 +21,15 @@ public class SaveLoadSystem3 {
         int x = i&0x1F;
         int y = (i>>10)&0x1F;
         int z = (i>>5)&0x1F;
-        return ExpansionUgly.expand(x,0b1001001001001)|ExpansionUgly.expand(y,0b10010010010010)|ExpansionUgly.expand(z,0b100100100100100);
+        return ExpansionUtil.expand(x,0b1001001001001)| ExpansionUtil.expand(y,0b10010010010010)| ExpansionUtil.expand(z,0b100100100100100);
 
         //zyxzyxzyxzyxzyx
     }
 
     public static int z2lin(int i) {
-        int x = ExpansionUgly.compress(i, 0b1001001001001);
-        int y = ExpansionUgly.compress(i, 0b10010010010010);
-        int z = ExpansionUgly.compress(i, 0b100100100100100);
+        int x = ExpansionUtil.compress(i, 0b1001001001001);
+        int y = ExpansionUtil.compress(i, 0b10010010010010);
+        int z = ExpansionUtil.compress(i, 0b100100100100100);
         return x|(y<<10)|(z<<5);
     }
 
