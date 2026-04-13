@@ -25,6 +25,21 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
+
+    exclusiveContent {
+        forRepository {
+            maven {
+                name "flashyreeseRepository"
+                url "https://maven.flashyreese.me/releases"
+            }
+        }
+        filter {
+            includeGroup "net.caffeinemc"
+        }
+    }
+
+
+
     maven { url = "https://maven.shedaniel.me/" }
     maven { url = "https://maven.terraformersmc.com/releases/" }
     maven { url = "https://repo.enonic.com/public/"}
@@ -169,7 +184,7 @@ dependencies {
 }
 
 
-def targetJavaVersion = 17
+def targetJavaVersion = 21
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
     it.options.release = targetJavaVersion
