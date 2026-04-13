@@ -74,6 +74,11 @@ public class IrisVoxyRenderPipeline extends AbstractRenderPipeline {
     }
 
     @Override
+    public boolean isUsingPipelineData(Object pipelineData) {
+        return this.data == pipelineData;
+    }
+
+    @Override
     public void setupExtraModelBakeryData(ModelBakerySubsystem modelService) {
         modelService.factory.setCustomBlockStateMapping(WorldRenderingSettings.INSTANCE.getBlockStateIds());
     }

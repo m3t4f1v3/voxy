@@ -467,6 +467,10 @@ public class VoxyRenderSystem {
         PrintfDebugUtil.addToOut(debug);
     }
 
+    public boolean isUsingPipelineData(Object pipelineData) {
+        return this.pipeline.isUsingPipelineData(pipelineData);
+    }
+
     public void shutdown() {
         Logger.info("Flushing download stream");
         DownloadStream.INSTANCE.flushWaitClear();

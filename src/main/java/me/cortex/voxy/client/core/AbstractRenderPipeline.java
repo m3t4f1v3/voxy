@@ -227,6 +227,10 @@ public abstract class AbstractRenderPipeline extends TrackedObject {
         RenderStatistics.addDebug(debug);
     }
 
+    public boolean isUsingPipelineData(Object pipelineData) {
+        return false;
+    }
+
     //Binds the framebuffer and any other bindings needed for rendering
     public abstract void setupAndBindOpaque(Viewport<?> viewport);
     public abstract void setupAndBindTranslucent(Viewport<?> viewport);
