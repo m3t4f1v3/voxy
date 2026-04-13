@@ -42,7 +42,7 @@ public final class ReuseVertexConsumer implements VertexConsumer {
     public ReuseVertexConsumer vertex(double x, double y, double z) {
         this.ensureCanPut();
         this.ptr += VERTEX_FORMAT_SIZE; this.count++; //Goto next vertex
-        this.meta(this.defaultMeta);
+        this.meta(this.defaultMeta | this.globalOrMetadata);
         MemoryUtil.memPutFloat(this.ptr, (float) x);
         MemoryUtil.memPutFloat(this.ptr + 4, (float) y);
         MemoryUtil.memPutFloat(this.ptr + 8, (float) z);
