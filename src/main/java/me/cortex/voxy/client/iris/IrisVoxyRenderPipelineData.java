@@ -173,7 +173,7 @@ public class IrisVoxyRenderPipelineData {
             layout.put(pos, uniform); pos += getSizeAndAlignment(uniform.type)>>5;
             //We must get a size 1 to pad to align 4
             if (!ordering[3].isEmpty()) {//Size 1
-                uniform = ordering[3].removeFirst();
+                uniform = ordering[3].remove(0);
                 layout.put(pos, uniform); pos += getSizeAndAlignment(uniform.type)>>5;
             } else {//Padding must be injected
                 pos += 1;

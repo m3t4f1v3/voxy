@@ -32,7 +32,7 @@ import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.common.thread.ServiceManager;
 import me.cortex.voxy.common.world.WorldEngine;
 import me.cortex.voxy.commonImpl.VoxyCommon;
-import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
+import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderMatrices;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.joml.Matrix4f;

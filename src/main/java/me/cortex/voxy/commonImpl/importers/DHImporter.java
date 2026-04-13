@@ -1,5 +1,6 @@
 package me.cortex.voxy.commonImpl.importers;
 
+import me.cortex.voxy.client.core.util.ExpansionUgly;
 import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.common.thread.Service;
 import me.cortex.voxy.common.thread.ServiceManager;
@@ -229,9 +230,9 @@ public class DHImporter implements IDataImporter {
             if (idx == -1)
                 throw new IllegalStateException();
             {
-                var biomeRes = ResourceLocation.parse(encEntry.substring(0, idx));
-                var biome = this.biomeRegistry.getHolder(biomeRes).orElse(this.defaultBiome);
-                biomeId = this.engine.getMapper().getIdForBiome(biome);
+                var biomeRes = ResourceLocation.tryParse(encEntry.substring(0, idx));
+                var biome = this.biomeRegistry.getOptional(biomeRes).orElse(this.defaultBiome.value());
+                biomeId = this.engine.getMapper().getIdForBiome(this.biomeRegistry.wrapAsHolder(biome));
             }
             {
                 int b = idx + BLOCK_STATE_SEPARATOR_STRING.length();
@@ -243,7 +244,7 @@ public class DHImporter implements IDataImporter {
                     if (sIdx != -1) {
                         bStateStr = encEntry.substring(sIdx + STATE_STRING_SEPARATOR.length());
                     }
-                    var bId = ResourceLocation.parse(encEntry.substring(b, sIdx != -1 ? sIdx : encEntry.length()));
+                    var bId = ResourceLocation.tryParse(encEntry.substring(b, sIdx != -1 ? sIdx : encEntry.length()));
                     var maybeBlock = this.blockRegistry.getOptional(bId);
                     Block block = Blocks.AIR;
                     if (maybeBlock.isPresent()) {
@@ -342,8 +343,8 @@ public class DHImporter implements IDataImporter {
         byte[] col = ctx.colScratch;
         for (int x = 0; x < 64; x++) {
             for (int z = 0; z < 64; z++) {
-                int bPos = Integer.expand(x&0xF, 0b00_00_0000_0000_1111) |
-                           Integer.expand(z, 0b00_11_0000_1111_0000);
+                int bPos = ExpansionUgly.expand(x&0xF, 0b00_00_0000_0000_1111) |
+                           ExpansionUgly.expand(z, 0b00_11_0000_1111_0000);
                 short cl = stream.readShort();
                 if (cl < 0) {
                     throw new IllegalStateException();
@@ -359,8 +360,8 @@ public class DHImporter implements IDataImporter {
                     //    int a = 0;
                     //}
                     //Insert all entries into data cache
-                    startY = Integer.expand(startY, 0b11111111_00_1111_0000_0000);
-                    endY = Integer.expand(endY, 0b11111111_00_1111_0000_0000);
+                    startY = ExpansionUgly.expand(startY, 0b11111111_00_1111_0000_0000);
+                    endY = ExpansionUgly.expand(endY, 0b11111111_00_1111_0000_0000);
                     final int Msk = 0b11111111_00_1111_0000_0000;
                     final int iMsk1 = (~Msk)+1;
                     for (int y = startY; y != endY; y = (y+iMsk1)&Msk) {

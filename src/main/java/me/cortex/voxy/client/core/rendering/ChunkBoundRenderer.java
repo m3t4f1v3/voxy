@@ -21,6 +21,15 @@ import org.lwjgl.system.MemoryUtil;
 import static org.lwjgl.opengl.ARBDirectStateAccess.glCopyNamedBufferSubData;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLES;
 import static org.lwjgl.opengl.GL11.GL_UNSIGNED_BYTE;
+import static org.lwjgl.opengl.GL11C.GL_CCW;
+import static org.lwjgl.opengl.GL11C.GL_CULL_FACE;
+import static org.lwjgl.opengl.GL11C.GL_CW;
+import static org.lwjgl.opengl.GL11C.GL_DEPTH_TEST;
+import static org.lwjgl.opengl.GL11C.GL_GREATER;
+import static org.lwjgl.opengl.GL11C.GL_LEQUAL;
+import static org.lwjgl.opengl.GL11C.glDepthFunc;
+import static org.lwjgl.opengl.GL11C.glEnable;
+import static org.lwjgl.opengl.GL11C.glFrontFace;
 import static org.lwjgl.opengl.GL15.GL_ELEMENT_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL15.glBindBuffer;
 import static org.lwjgl.opengl.GL30.glBindVertexArray;
@@ -99,7 +108,7 @@ public class ChunkBoundRenderer {
         long ptr = UploadStream.INSTANCE.upload(this.uniformBuffer, 0, 128);
         long matPtr = ptr; ptr += 4*4*4;
 
-        final float renderDistance = Minecraft.getInstance().options.getEffectiveRenderDistance()*16;//In blocks
+        final float renderDistance = (Minecraft.getInstance().options.getEffectiveRenderDistance() - 2)*16;//In blocks
 
         {//This is recomputed to be in chunk section space not worldsection
 

@@ -3,7 +3,6 @@ package me.cortex.voxy.client.core.gl.shader;
 import me.cortex.voxy.client.core.gl.Capabilities;
 import me.cortex.voxy.client.core.gl.GlDebug;
 import me.cortex.voxy.common.Logger;
-import me.cortex.voxy.common.util.ThreadUtils;
 import me.cortex.voxy.common.util.TrackedObject;
 import org.lwjgl.opengl.GL20C;
 import org.lwjgl.system.MemoryStack;
@@ -14,6 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import org.lwjgl.system.Platform;
 
 import static org.lwjgl.opengl.GL20.glDeleteProgram;
 import static org.lwjgl.opengl.GL20.glUseProgram;
@@ -173,7 +174,7 @@ public class Shader extends TrackedObject {
 
         public T compile() {
             this.defineIf("IS_INTEL", Capabilities.INSTANCE.isIntel);
-            this.defineIf("IS_WINDOWS", ThreadUtils.isWindows);
+            this.defineIf("IS_WINDOWS", Platform.get() == Platform.WINDOWS);
             return this.constructor.make(this, this.compileToProgram());
         }
 

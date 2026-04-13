@@ -2,9 +2,8 @@ package me.cortex.voxy.client.mixin.iris;
 
 import me.cortex.voxy.client.core.IGetVoxyRenderSystem;
 import me.cortex.voxy.client.core.util.IrisUtil;
-import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
+import me.jellysquid.mods.sodium.client.render.chunk.ChunkRenderMatrices;
 import net.minecraft.client.Camera;
-import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -20,6 +19,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+
 import static org.lwjgl.opengl.GL11C.glViewport;
 
 @Mixin(LevelRenderer.class)
@@ -28,12 +29,13 @@ public class MixinLevelRenderer {
 
     @Inject(method = "renderLevel", at = @At("HEAD"), order = 100)
     private void voxy$injectIrisCompat(
-            DeltaTracker tickCounter,
+            PoseStack matrices,
+            float tickDelta,
+            long limitTime,
             boolean renderBlockOutline,
             Camera camera,
             GameRenderer gameRenderer,
             LightTexture lightTexture,
-            Matrix4f positionMatrix,
             Matrix4f projectionMatrix,
             CallbackInfo ci) {
         if (IrisUtil.irisShaderPackEnabled()) {
@@ -43,7 +45,7 @@ public class MixinLevelRenderer {
                 glViewport(0,0,Minecraft.getInstance().getMainRenderTarget().width, Minecraft.getInstance().getMainRenderTarget().height);
 
                 var pos = camera.getPosition();
-                IrisUtil.CAPTURED_VIEWPORT_PARAMETERS = new IrisUtil.CapturedViewportParameters(new ChunkRenderMatrices(projectionMatrix, positionMatrix), pos.x, pos.y, pos.z);
+                IrisUtil.CAPTURED_VIEWPORT_PARAMETERS = new IrisUtil.CapturedViewportParameters(new ChunkRenderMatrices(projectionMatrix, matrices.last().pose()), pos.x, pos.y, pos.z);
             }
         }
     }

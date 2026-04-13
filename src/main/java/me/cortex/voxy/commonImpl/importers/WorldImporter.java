@@ -25,7 +25,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.chunk.PalettedContainerRO;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.storage.RegionFileVersion;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipFile;
@@ -80,11 +79,11 @@ import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.chunk.DataLayer;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import net.minecraft.world.level.chunk.PalettedContainerRO;
 import net.minecraft.world.level.chunk.PalettedContainerRO.PackedData;
-import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.chunk.storage.RegionFileVersion;
 
 public class WorldImporter implements IDataImporter {
@@ -224,7 +223,7 @@ public class WorldImporter implements IDataImporter {
     public void importZippedRegionDirectoryAsync(File zip, String innerDirectory) {
         try {
             innerDirectory = innerDirectory.replace("\\\\", "\\").replace("\\", "/");
-            var file = ZipFile.builder().setFile(zip).get();
+            var file = new ZipFile(zip);
             ArrayList<ZipArchiveEntry> regions = new ArrayList<>();
             for (var e = file.getEntries(); e.hasMoreElements();) {
                 var entry = e.nextElement();
@@ -263,6 +262,7 @@ public class WorldImporter implements IDataImporter {
                 }
                 buf.free();
             });
+            file.close();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -524,11 +524,11 @@ public class WorldImporter implements IDataImporter {
         }
 
         var blockStatesRes = blockStateCodec.parse(NbtOps.INSTANCE, section.getCompound("block_states"));
-        if (!blockStatesRes.hasResultOrPartial()) {
+        blockStatesRes.get().ifRight(partial -> {
             //TODO: if its only partial, it means should try to upgrade the nbt format with datafixerupper probably
             return;
-        }
-        var blockStates = blockStatesRes.getPartialOrThrow();
+        });
+        var blockStates = blockStatesRes.getOrThrow(false, Logger::error);
         var biomes = this.defaultBiomeProvider;
         var optBiomes = section.getCompound("biomes");
         if (!optBiomes.isEmpty()) {

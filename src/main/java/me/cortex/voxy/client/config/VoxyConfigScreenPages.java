@@ -4,11 +4,12 @@ import com.google.common.collect.ImmutableList;
 import me.cortex.voxy.client.ClientSessionEvents;
 import me.cortex.voxy.client.core.IGetVoxyRenderSystem;
 import me.cortex.voxy.client.core.util.IrisUtil;
-import me.cortex.voxy.common.util.cpu.CpuLayout;
+import me.cortex.voxy.client.mixin.sodium.AccessorSodiumWorldRenderer;
 import me.cortex.voxy.commonImpl.VoxyCommon;
-import net.caffeinemc.mods.sodium.client.gui.options.*;
-import net.caffeinemc.mods.sodium.client.gui.options.control.SliderControl;
-import net.caffeinemc.mods.sodium.client.gui.options.control.TickBoxControl;
+import me.jellysquid.mods.sodium.client.gui.options.*;
+import me.jellysquid.mods.sodium.client.gui.options.control.SliderControl;
+import me.jellysquid.mods.sodium.client.gui.options.control.TickBoxControl;
+import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -55,12 +56,11 @@ public abstract class VoxyConfigScreenPages {
                 .add(OptionImpl.createBuilder(int.class, storage)
                         .setName(Component.translatable("voxy.config.general.serviceThreads"))
                         .setTooltip(Component.translatable("voxy.config.general.serviceThreads.tooltip"))
-                        .setControl(opt -> new SliderControl(opt,
-                                1,
-                                CpuLayout.getCoreCount(),
-                                1,
-                                v -> Component.literal(Integer.toString(v))))
-                        .setBinding((s, v) -> {
+                        .setControl(opt->new SliderControl(opt, 1,
+                                // CpuLayout.CORES.length, //Just do core size as max
+                                Runtime.getRuntime().availableProcessors() * 2,//Note: this is threads not cores, the default value is half the core count, is fine as this should technically be the limit but CpuLayout.CORES.length is more realistic
+                                1, v->Component.literal(Integer.toString(v))))
+                        .setBinding((s, v)->{
                             s.serviceThreads = v;
                             var instance = VoxyCommon.getInstance();
                             if (instance != null) {
@@ -127,7 +127,7 @@ public abstract class VoxyConfigScreenPages {
                         .setControl(opt -> new SliderControl(opt, 10, 64 * 16, 1, v -> Component.literal(Integer.toString(v * 2))))
                         .setBinding((s, v) -> {
                             // Value stored as float fraction
-                            s.sectionRenderDistance = ((float)v) / 16.0f;
+                            s.sectionRenderDistance = (int) (((float)v) / 16.0f);
 
                             var vrsh = (IGetVoxyRenderSystem) Minecraft.getInstance().levelRenderer;
                             if (vrsh != null) {

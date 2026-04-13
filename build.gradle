@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version "1.11-SNAPSHOT"
+    id 'fabric-loom' version "1.10-SNAPSHOT"
     id 'maven-publish'
 }
 
@@ -44,6 +44,12 @@ repositories {
             includeModuleByRegex("[^\\.]+", "nvidium")
         }
     }
+    maven {
+        url "https://maven.flashyreese.me/releases"
+    }
+    maven {
+        url "https://maven.flashyreese.me/snapshots"
+    }
 }
 
 
@@ -80,6 +86,11 @@ processResources {
 
 loom {
     accessWidenerPath = file("src/main/resources/voxy.accesswidener")
+    runs {
+        client {
+            vmArgs "-Dsodium.checks.issue2561=false"
+        }
+    }
 }
 
 def modRuntimeOnlyMsk = {arg->}
@@ -106,19 +117,20 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
     //TODO: this is to eventually not need sodium installed as atm its just used for parsing shaders
-    modRuntimeOnlyMsk "maven.modrinth:sodium:mc1.21.1-0.6.13-fabric"
-    modCompileOnly "maven.modrinth:sodium:mc1.21.1-0.6.13-fabric"
+    modRuntimeOnlyMsk "maven.modrinth:sodium:mc1.20.1-0.5.13-fabric"
+    modCompileOnly "maven.modrinth:sodium:mc1.20.1-0.5.13-fabric"
 
-    modImplementation("maven.modrinth:lithium:mc1.21.1-0.15.0-fabric")
+    modImplementation("maven.modrinth:lithium:mc1.20.1-0.11.3-fabric")
 
-    modRuntimeOnlyMsk "drouarb:nvidium:0.4.1-beta9:1.21-1.21.1@jar"
-    modCompileOnly "drouarb:nvidium:0.4.1-beta9:1.21-1.21.1@jar"
+    // modRuntimeOnlyMsk "drouarb:nvidium:0.4.1-beta9:1.21-1.21.1@jar"
+    // modCompileOnly "drouarb:nvidium:0.4.1-beta9:1.21-1.21.1@jar"
+    modCompileOnly "maven.modrinth:nvidium:0.2.6-beta-1.20.1"
 
-    modCompileOnly("maven.modrinth:modmenu:11.0.3")
-    modRuntimeOnlyMsk("maven.modrinth:modmenu:11.0.3")
+    modCompileOnly("maven.modrinth:modmenu:7.2.2")
+    modRuntimeOnlyMsk("maven.modrinth:modmenu:7.2.2")
 
-    modCompileOnly("maven.modrinth:iris:1.8.8+1.21.1-fabric")
-    modRuntimeOnlyMsk("maven.modrinth:iris:1.8.8+1.21.1-fabric")
+    modCompileOnly("maven.modrinth:iris:1.7.6+1.20.1")
+    modRuntimeOnlyMsk("maven.modrinth:iris:1.7.6+1.20.1")
     // iris needs these for some reason
     modRuntimeOnlyMsk("io.github.douira:glsl-transformer:2.0.1")
     modRuntimeOnlyMsk("org.anarres:jcpp:1.4.14")
@@ -127,25 +139,32 @@ dependencies {
 
     //modCompileOnly("maven.modrinth:immersiveportals:v5.1.7-mc1.20.4")
 
-    modCompileOnly("maven.modrinth:sodium-extra:mc1.21.1-0.6.0+fabric")
-    modRuntimeOnlyMsk("maven.modrinth:sodium-extra:mc1.21.1-0.6.0+fabric")
+    modCompileOnly("maven.modrinth:sodium-extra:mc1.20.1-0.5.9")
+    modRuntimeOnlyMsk("maven.modrinth:sodium-extra:mc1.20.1-0.5.9")
+    modRuntimeOnlyMsk("net.caffeinemc:CaffeineConfig:1.3.0+1.17")
 
-    modCompileOnly("maven.modrinth:chunky:1.4.23-fabric")
-    modRuntimeOnlyMsk("maven.modrinth:chunky:1.4.23-fabric")
+    modCompileOnly("maven.modrinth:Chunky:1.3.146-fabric")
+    modRuntimeOnlyMsk("maven.modrinth:Chunky:1.3.146-fabric")
 
-    modRuntimeOnlyMsk("maven.modrinth:spark:1.10.152-fabric")
-    modRuntimeOnlyMsk("maven.modrinth:fabric-permissions-api:0.3.3")
+    // modRuntimeOnlyMsk("maven.modrinth:spark:1.10.53-fabric")
+    modRuntimeOnlyMsk("maven.modrinth:fabric-permissions-api:0.3.1")
     //modRuntimeOnly("maven.modrinth:nsight-loader:1.2.0")
 
     //modImplementation('io.github.douira:glsl-transformer:2.0.1')
 
-    modCompileOnly("maven.modrinth:vivecraft:1.21.9-1.3.2-fabric")
+    modCompileOnly("maven.modrinth:vivecraft:1.20.1-1.3.2-fabric")
 
     modCompileOnly("maven.modrinth:flashback:rNCr1Rbs")
+
+    // implementation("maven.modrinth:DistantHorizonsApi:4.1.0")
+    // i know should be runtime only but BLAHHH
+    modCompileOnly("maven.modrinth:DistantHorizons:2.3.6-b-1.20.1")
+    modRuntimeOnlyMsk("maven.modrinth:DistantHorizons:2.3.6-b-1.20.1")
+    modRuntimeOnlyMsk("maven.modrinth:indium:1.0.36+mc1.20.1")
 }
 
 
-def targetJavaVersion = 21
+def targetJavaVersion = 17
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
     it.options.release = targetJavaVersion
@@ -172,6 +191,17 @@ jar {
     }
 }
 
+publishing() {
+	publications() {
+		mavenJava(MavenPublication) {
+			from(components.java)
+		}
+	}
+
+	repositories() {
+		mavenLocal()
+	}
+}
 
 
 tasks.register('makeExcludedRocksDB', Zip) {
@@ -221,7 +251,7 @@ remapJar {
     }
 }
 
-project.ext.lwjglVersion = "3.3.3"
+project.ext.lwjglVersion = "3.3.1"
 project.ext.lwjglNatives = "natives-windows"
 
 repositories {

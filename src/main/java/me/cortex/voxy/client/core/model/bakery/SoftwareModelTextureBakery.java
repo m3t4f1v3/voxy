@@ -62,7 +62,7 @@ public class SoftwareModelTextureBakery {
     }
 
     public void setupTexture() {
-        var texture = Minecraft.getInstance().getTextureManager().getTexture(ResourceLocation.fromNamespaceAndPath("minecraft", "textures/atlas/blocks.png"));
+        var texture = Minecraft.getInstance().getTextureManager().getTexture(new ResourceLocation("minecraft", "textures/atlas/blocks.png"));
 
         int textureId = texture.getId();
 
@@ -314,7 +314,7 @@ public class SoftwareModelTextureBakery {
         stack.mulPose(makeQuatFromAxisExact(new Vector3f(0, 0, 1), rotation));
         stack.mulPose(makeQuatFromAxisExact(new Vector3f(1, 0, 0), pitch));
         stack.mulPose(makeQuatFromAxisExact(new Vector3f(0, 1, 0), yaw));
-        stack.mulPose(new Matrix4f().scale(1 - 2 * (flip & 1), 1 - (flip & 2), 1 - ((flip >> 1) & 2)));
+        stack.mulPoseMatrix(new Matrix4f().scale(1 - 2 * (flip & 1), 1 - (flip & 2), 1 - ((flip >> 1) & 2)));
         stack.translate(-0.5f, -0.5f, -0.5f);
         var mat = new Matrix4f(stack.last().pose());
 

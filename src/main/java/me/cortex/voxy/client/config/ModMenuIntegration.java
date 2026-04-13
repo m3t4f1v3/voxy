@@ -4,7 +4,7 @@ import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
 import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.commonImpl.VoxyCommon;
-import net.caffeinemc.mods.sodium.client.gui.SodiumOptionsGUI;
+import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 
 public class ModMenuIntegration implements ModMenuApi {
     @Override

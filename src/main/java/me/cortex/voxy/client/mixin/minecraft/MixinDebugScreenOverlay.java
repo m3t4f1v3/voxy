@@ -1,20 +1,15 @@
 package me.cortex.voxy.client.mixin.minecraft;
 
-import me.cortex.voxy.client.RenderStatistics;
 import me.cortex.voxy.client.core.IGetVoxyRenderSystem;
 import me.cortex.voxy.client.core.VoxyRenderSystem;
-import me.cortex.voxy.client.core.util.GPUTiming;
 import me.cortex.voxy.commonImpl.VoxyCommon;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.DebugScreenOverlay;
+
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.ArrayList;
@@ -22,24 +17,6 @@ import java.util.List;
 
 @Mixin(DebugScreenOverlay.class)
 public abstract class MixinDebugScreenOverlay {
-
-    @Shadow
-    private boolean renderDebug;
-
-    @Unique
-    private boolean lastDebugEnabledState = false;
-
-    @Inject(method = "render", at = @At("HEAD"))
-    private void manageGpuTiming(GuiGraphics guiGraphics, CallbackInfo ci) {
-        boolean isDebugOpen = this.renderDebug;
-
-        if (isDebugOpen != lastDebugEnabledState) {
-            lastDebugEnabledState = isDebugOpen;
-
-            GPUTiming.INSTANCE.setEnabled(isDebugOpen);
-            RenderStatistics.enabled = isDebugOpen;
-        }
-    }
 
     @Inject(at = @At("RETURN"), method = "getGameInformation")
     protected void getGameInformation(CallbackInfoReturnable<List<String>> info) {

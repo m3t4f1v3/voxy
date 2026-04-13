@@ -266,11 +266,7 @@ public class ModelFactory {
         var biomeEntry = this.biomeQueue.poll();
         while (biomeEntry != null) {
             var biomeRegistry = Minecraft.getInstance().level.registryAccess().registryOrThrow(Registries.BIOME);
-            var mcbiomeEntry = biomeRegistry.getOptional(ResourceLocation.parse(biomeEntry.biome));
-            if (!mcbiomeEntry.isPresent()) {
-                Logger.error("Could not find biome: " + biomeEntry.biome + " using default");
-            }
-            var res = this.addBiome0(biomeEntry.id, mcbiomeEntry.orElse(DEFAULT_BIOME));
+            var res = this.addBiome0(biomeEntry.id, biomeRegistry.getOptional(ResourceLocation.tryParse(biomeEntry.biome)).orElseThrow());
             if (res != null) {
                 this.uploadResults.add(res);
             }
