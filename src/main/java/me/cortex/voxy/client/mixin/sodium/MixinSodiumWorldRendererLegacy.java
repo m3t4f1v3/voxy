@@ -29,13 +29,13 @@ public class MixinSodiumWorldRendererLegacy {
     private ChunkRenderMatrices voxy$capturedMatrices;
 
     @Dynamic
-    @Inject(method = "drawChunkLayer(Lnet/minecraft/class_1921;Lnet/minecraft/class_4587;DDD)V", at = @At("HEAD"))
+    @Inject(method = "drawChunkLayer(Lnet/minecraft/client/renderer/RenderType;Lcom/mojang/blaze3d/vertex/PoseStack;DDD)V", at = @At("HEAD"))
     private void voxy$captureMatrices(RenderType renderLayer, PoseStack matrixStack, double x, double y, double z, CallbackInfo ci) {
         this.voxy$capturedMatrices = ChunkRenderMatrices.from(matrixStack);
     }
 
     @Dynamic
-    @Inject(method = "drawChunkLayer(Lnet/minecraft/class_1921;Lnet/minecraft/class_4587;DDD)V", at = @At("TAIL"))
+    @Inject(method = "drawChunkLayer(Lnet/minecraft/client/renderer/RenderType;Lcom/mojang/blaze3d/vertex/PoseStack;DDD)V", at = @At("TAIL"))
     private void injectRender(RenderType renderLayer, PoseStack matrixStack, double x, double y, double z, CallbackInfo ci) {
         this.doRender(this.voxy$capturedMatrices, renderLayer, x, y, z);
     }

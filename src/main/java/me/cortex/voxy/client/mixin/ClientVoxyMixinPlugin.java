@@ -1,6 +1,7 @@
 package me.cortex.voxy.client.mixin;
 
 import me.cortex.voxy.common.Logger;
+import net.fabricmc.loader.api.FabricLoader;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -13,9 +14,14 @@ import java.util.Set;
 
 public class ClientVoxyMixinPlugin implements IMixinConfigPlugin {
     private static boolean sodiumLegacy = true;
+    private static boolean valkyrienSkiesInstalled;
+    private static boolean nvidiumInstalled;
 
     @Override
     public void onLoad(String mixinPackage) {
+        valkyrienSkiesInstalled = FabricLoader.getInstance().isModLoaded("valkyrienskies");
+        nvidiumInstalled = FabricLoader.getInstance().isModLoaded("nvidium");
+
         try (InputStream stream = getClass().getClassLoader()
                 .getResourceAsStream("me/jellysquid/mods/sodium/client/render/SodiumWorldRenderer.class")) {
 
@@ -42,7 +48,10 @@ public class ClientVoxyMixinPlugin implements IMixinConfigPlugin {
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) { return true; }
 
     @Override public List<String> getMixins() {
-        return List.of(sodiumLegacy ? "sodium.MixinSodiumWorldRendererLegacy" : "sodium.MixinSodiumWorldRenderer");
+        if (valkyrienSkiesInstalled && !nvidiumInstalled) {
+            return List.of(sodiumLegacy ? "sodium.MixinSodiumWorldRendererLegacy" : "sodium.MixinSodiumWorldRenderer");
+        }
+        return List.of("sodium.MixinDefaultChunkRenderer");
     }
 
     @Override
