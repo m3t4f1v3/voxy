@@ -9,6 +9,7 @@ import me.cortex.voxy.client.core.gl.GlBuffer;
 import me.cortex.voxy.client.core.gl.GlTexture;
 import me.cortex.voxy.client.core.model.bakery.SoftwareModelTextureBakery;
 import me.cortex.voxy.client.core.rendering.util.UploadStream;
+import me.cortex.voxy.client.core.util.StairBlockCooked;
 import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.common.util.MemoryBuffer;
 import me.cortex.voxy.common.util.Pair;
@@ -179,11 +180,7 @@ public class ModelFactory {
         var blockState = this.mapper.getBlockStateFromBlockId(blockId);
 
         if (blockState.getBlock() instanceof StairBlock sb) {
-            if (sb.baseState.hasProperty(BlockStateProperties.WATERLOGGED)) {
-                blockState = sb.baseState.setValue(BlockStateProperties.WATERLOGGED, blockState.getValue(BlockStateProperties.WATERLOGGED));
-            } else {
-                blockState = sb.baseState;
-            }
+            blockState = ((StairBlockCooked)sb).setBaseWaterlogged(blockState);
         }
 
         //Before we enqueue the baking of this blockstate, we must check if it has a fluid state associated with it

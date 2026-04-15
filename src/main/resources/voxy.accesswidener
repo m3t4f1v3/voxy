@@ -24,7 +24,5 @@ accessible method net/minecraft/client/renderer/GameRenderer getFov (Lnet/minecr
 accessible method net/minecraft/client/multiplayer/ClientChunkCache$Storage getChunk (I)Lnet/minecraft/world/level/chunk/LevelChunk;
 accessible method net/minecraft/client/multiplayer/ClientChunkCache$Storage getIndex (II)I
 
-accessible field net/minecraft/world/level/block/StairBlock baseState Lnet/minecraft/world/level/block/state/BlockState;
-
 accessible field net/minecraft/client/renderer/LightTexture lightTexture Lnet/minecraft/client/renderer/texture/DynamicTexture;
 accessible field com/mojang/blaze3d/systems/RenderSystem$AutoStorageIndexBuffer name I

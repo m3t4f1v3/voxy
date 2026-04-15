@@ -28,6 +28,7 @@
     "minecraft.MixinLevelRenderer",
     "minecraft.MixinMinecraft",
     "minecraft.MixinRenderSystem",
+    "minecraft.MixinStairBlock",
     "minecraft.MixinWindow",
     "nvidium.MixinRenderPipeline",
     "sodium.AccessorChunkTracker",
