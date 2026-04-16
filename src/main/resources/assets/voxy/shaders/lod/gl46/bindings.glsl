@@ -3,6 +3,12 @@ layout(binding = 0, std140) uniform SceneUniform {
     ivec3 baseSectionPos;
     uint frameId;
     vec3 cameraSubPos;
+    float _scenePadding0;
+    vec2 waterAnimationRange;
+    float waterAnimationStrength;
+    float _scenePadding1;
+    vec4 waterStillUv;
+    vec4 waterFlowUv;
 };
 
 //TODO: see if making the stride 2*4*4 bytes or something cause you get that 16 byte write

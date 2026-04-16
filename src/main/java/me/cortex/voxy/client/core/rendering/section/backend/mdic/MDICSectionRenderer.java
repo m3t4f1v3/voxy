@@ -4,6 +4,7 @@ package me.cortex.voxy.client.core.rendering.section.backend.mdic;
 import me.cortex.voxy.client.RenderStatistics;
 import me.cortex.voxy.client.VoxyClient;
 import me.cortex.voxy.client.core.AbstractRenderPipeline;
+import me.cortex.voxy.client.core.VoxyRenderSystem;
 import me.cortex.voxy.client.core.gl.Capabilities;
 import me.cortex.voxy.client.core.gl.GlBuffer;
 import me.cortex.voxy.client.core.gl.GlVertexArray;
@@ -21,7 +22,10 @@ import me.cortex.voxy.client.core.util.GPUTiming;
 import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.common.world.WorldEngine;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.InventoryMenu;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryUtil;
 
@@ -52,6 +56,12 @@ public class MDICSectionRenderer extends AbstractSectionRenderer<MDICViewport, B
     private static final int TRANSLUCENT_OFFSET = OPAQUE_DRAW_COUNT;//in draw calls
     private static final int TEMPORAL_OFFSET = TRANSLUCENT_OFFSET+TRANSLUCENT_DRAW_COUNT;//in draw calls
     private static final int STATISTICS_BUFFER_BINDING = 8;
+    private static final int VANILLA_BLOCK_ATLAS_TEXTURE_BINDING = 3;
+    private static final ResourceLocation WATER_STILL_TEXTURE = new ResourceLocation("minecraft", "block/water_still");
+    private static final ResourceLocation WATER_FLOW_TEXTURE = new ResourceLocation("minecraft", "block/water_flow");
+    private static final float WATER_ANIMATION_FADE_INSET = 32.0f;
+    private static final float WATER_ANIMATION_FADE_OUTSET = 128.0f;
+    private static final float WATER_ANIMATION_STRENGTH = 1.0f;
     private final Shader terrainShader;
     private final Shader translucentTerrainShader;
 
@@ -148,6 +158,9 @@ public class MDICSectionRenderer extends AbstractSectionRenderer<MDICViewport, B
 
     private void uploadUniformBuffer(MDICViewport viewport) {
         long ptr = UploadStream.INSTANCE.upload(this.uniform, 0, 1024);
+        float vanillaRenderDistance = VoxyRenderSystem.getRenderDistance();
+        float waterAnimationFadeStart = Math.max(0.0f, vanillaRenderDistance - WATER_ANIMATION_FADE_INSET);
+        float waterAnimationFadeEnd = Math.max(waterAnimationFadeStart + 1.0f, vanillaRenderDistance + WATER_ANIMATION_FADE_OUTSET);
         
         var mat = new Matrix4f(viewport.MVP);
         mat.translate(-viewport.innerTranslation.x, -viewport.innerTranslation.y, -viewport.innerTranslation.z);
@@ -161,8 +174,24 @@ public class MDICSectionRenderer extends AbstractSectionRenderer<MDICViewport, B
         }
         MemoryUtil.memPutInt(ptr, viewport.frameId&0x7fffffff); ptr += 4;
         viewport.innerTranslation.getToAddress(ptr); ptr += 4*3;
+        MemoryUtil.memPutFloat(ptr, 0.0f); ptr += 4;
+        MemoryUtil.memPutFloat(ptr, waterAnimationFadeStart); ptr += 4;
+        MemoryUtil.memPutFloat(ptr, waterAnimationFadeEnd); ptr += 4;
+        MemoryUtil.memPutFloat(ptr, WATER_ANIMATION_STRENGTH); ptr += 4;
+        MemoryUtil.memPutFloat(ptr, 0.0f); ptr += 4;
+        var blockAtlas = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS);
+        ptr = putSpriteUv(ptr, blockAtlas.apply(WATER_STILL_TEXTURE));
+        ptr = putSpriteUv(ptr, blockAtlas.apply(WATER_FLOW_TEXTURE));
 
         UploadStream.INSTANCE.commit();
+    }
+
+    private static long putSpriteUv(long ptr, TextureAtlasSprite sprite) {
+        MemoryUtil.memPutFloat(ptr, sprite.getU0()); ptr += 4;
+        MemoryUtil.memPutFloat(ptr, sprite.getV0()); ptr += 4;
+        MemoryUtil.memPutFloat(ptr, sprite.getU1()); ptr += 4;
+        MemoryUtil.memPutFloat(ptr, sprite.getV1()); ptr += 4;
+        return ptr;
     }
 
 
@@ -174,6 +203,9 @@ public class MDICSectionRenderer extends AbstractSectionRenderer<MDICViewport, B
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, viewport.positionScratchBuffer.id);
         LightMapHelper.bind(1);
         glBindTextureUnit(2, viewport.depthBoundingBuffer.getDepthTex().id);
+        glBindTextureUnit(
+                VANILLA_BLOCK_ATLAS_TEXTURE_BINDING,
+                Minecraft.getInstance().getTextureManager().getTexture(InventoryMenu.BLOCK_ATLAS).getId());
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, SharedIndexBuffer.INSTANCE.id());
         glBindBuffer(GL_DRAW_INDIRECT_BUFFER, viewport.drawCallBuffer.id);
@@ -210,6 +242,8 @@ public class MDICSectionRenderer extends AbstractSectionRenderer<MDICViewport, B
         glBindTextureUnit(0, 0);
         glBindSampler(1, 0);
         glBindTextureUnit(1, 0);
+        glBindSampler(VANILLA_BLOCK_ATLAS_TEXTURE_BINDING, 0);
+        glBindTextureUnit(VANILLA_BLOCK_ATLAS_TEXTURE_BINDING, 0);
 
         //RenderLayer.getCutoutMipped().endDrawing();
     }
@@ -252,6 +286,8 @@ public class MDICSectionRenderer extends AbstractSectionRenderer<MDICViewport, B
         glBindTextureUnit(0, 0);
         glBindSampler(1, 0);
         glBindTextureUnit(1, 0);
+        glBindSampler(VANILLA_BLOCK_ATLAS_TEXTURE_BINDING, 0);
+        glBindTextureUnit(VANILLA_BLOCK_ATLAS_TEXTURE_BINDING, 0);
 
         glDepthMask(true);
         glDisable(GL_BLEND);

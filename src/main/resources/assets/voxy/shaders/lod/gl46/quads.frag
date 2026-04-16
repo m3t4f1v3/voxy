@@ -11,6 +11,7 @@
 
 layout(binding = 0) uniform sampler2D blockModelAtlas;
 layout(binding = 2) uniform sampler2D depthTex;
+layout(binding = 3) uniform sampler2D vanillaBlockAtlas;
 
 //#define DEBUG_RENDER
 
@@ -21,20 +22,18 @@ layout(location = 0) in flat uvec4 interData;
 #ifndef USE_NV_BARRY
 layout(location = 1) in vec2 uv;
 #endif
+layout(location = 2) in flat float waterAnimationFade;
 
 #ifdef DEBUG_RENDER
 layout(location = 7) in flat uint quadDebug;
 #endif
 
-
-#ifndef PATCHED_SHADER
-layout(location = 0) out vec4 outColour;
-#else
-
-//Bind the model buffer and import the model system as we need it
 #define MODEL_BUFFER_BINDING 3
 #import <voxy:lod/block_model.glsl>
 
+
+#ifndef PATCHED_SHADER
+layout(location = 0) out vec4 outColour;
 #endif
 
 #import <voxy:lod/gl46/bindings.glsl>
@@ -86,6 +85,17 @@ vec2 getBaseUV() {
     return modelUV + (vec2(face>>1, face&1u) * (1.0/(vec2(3.0, 2.0)*256.0)));
 }
 
+vec4 getWaterSpriteBounds(uint face) {
+    return ((face >> 1u) == 0u) ? waterStillUv : waterFlowUv;
+}
+
+vec4 sampleVanillaWater(vec2 localUv, vec2 uvDx, vec2 uvDy, uint face) {
+    vec4 bounds = getWaterSpriteBounds(face);
+    vec2 atlasScale = bounds.zw - bounds.xy;
+    vec2 atlasUv = bounds.xy + localUv * atlasScale;
+    return textureGrad(vanillaBlockAtlas, atlasUv, uvDx * atlasScale, uvDy * atlasScale);
+}
+
 
 #ifdef PATCHED_SHADER
 struct VoxyFragmentParameters {
@@ -134,7 +144,10 @@ void main() {
     #endif
     #endif
 
-    vec2 uv2 = modf(uv, tile)*(1.0/(vec2(3.0,2.0)*256.0));
+    vec2 localUv = modf(uv, tile);
+    vec2 uvDx = dFdx(uv);
+    vec2 uvDy = dFdy(uv);
+    vec2 uv2 = localUv*(1.0/(vec2(3.0,2.0)*256.0));
     vec4 colour;
     vec2 texPos = uv2 + getBaseUV();
 //This is deprecated, TODO: remove the non mip code path
@@ -148,6 +161,16 @@ void main() {
     }// else {
     //    colour = textureLod(blockModelAtlas, texPos, 0);
     //}
+
+    #ifdef TRANSLUCENT
+    if (waterAnimationFade > 0.0f) {
+        BlockModel waterModel = modelData[getModelId()];
+        if (modelIsWater(waterModel)) {
+            vec4 waterColour = sampleVanillaWater(localUv, uvDx, uvDy, getFace());
+            colour = mix(colour, waterColour, clamp(waterAnimationFade, 0.0f, 1.0f));
+        }
+    }
+    #endif
 
     //If we are in shaders and are a helper invocation, just exit, as it enables extra performance gains for small sized
     // fragments, we do this here after derivative computation

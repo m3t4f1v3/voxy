@@ -24,6 +24,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.ColorResolver;
 import net.minecraft.world.level.LightLayer;
@@ -583,6 +584,7 @@ public class ModelFactory {
         //Have 40 bytes free for remaining model data
         // todo: put in like the render layer type ig? along with colour resolver info
         int modelFlags = 0;
+        boolean isWater = isFluid && blockState.getFluidState().is(FluidTags.WATER);
         modelFlags |= colourProvider != null?1:0;
         modelFlags |= isBiomeColourDependent?2:0;//Basicly whether to use the next int as a colour or as a base index/id into a colour buffer for biome dependent colours
         modelFlags |= layer == RenderType.translucent()?4:0;//Is translucent
@@ -590,6 +592,7 @@ public class ModelFactory {
 
         //TODO: THIS
         modelFlags |= isShaded?8:0;//model has AO and shade
+        modelFlags |= isWater?16:0;//Pure water models can opt into the animated LOD path
 
         //modelFlags |= blockRenderLayer == RenderLayer.getSolid()?0:1;// should discard alpha
         MemoryUtil.memPutInt(uploadPtr, modelFlags); uploadPtr += 4;

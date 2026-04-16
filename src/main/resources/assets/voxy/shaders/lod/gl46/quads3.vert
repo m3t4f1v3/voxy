@@ -24,6 +24,7 @@ layout(location = 0) out flat uvec4 interData;
 #ifndef USE_NV_BARRY
 layout(location = 1) out vec2 uv;
 #endif
+layout(location = 2) out flat float waterAnimationFade;
 
 #ifdef USE_NV_JANK
 #ifdef GL_NV_gpu_shader5
@@ -66,6 +67,7 @@ void main() {
 
     //Note: other data is automatically discarded as it is undefiend and has not been generated
     interData = quad.attributeData;
+    waterAnimationFade = quad.waterAnimationFade;
 
 
     #ifdef DEBUG_RENDER

@@ -32,6 +32,7 @@ struct QuadData {
     vec3 basePoint;
     vec2 quadSizeAddin;
     vec2 uvCorner;
+    float waterAnimationFade;
 };
 
 uint makeQuadFlags(uint faceData, uint modelId, ivec2 quadSize, const in BlockModel model, uint face) {
@@ -148,6 +149,14 @@ void setupQuad(out QuadData quad, const in Quad rawQuad, uvec2 sPos, bool genera
     quad.quadSizeAddin = faceSize.yw + quadSize - 1;
     #endif
     quad.uvCorner = faceSize.xz;
+
+    vec2 quadCenterMask = vec2(0.5f * quad.lodScale);
+    vec3 quadCenter = quad.basePoint + swizzelDataAxis(quad.axis, vec3(quad.quadSizeAddin * quadCenterMask, 0.0));
+    quad.waterAnimationFade = 0.0f;
+    if (lodLevel == 0u && modelIsWater(model)) {
+        float xzDistance = length(quadCenter.xz - cameraSubPos.xz);
+        quad.waterAnimationFade = (1.0f - smoothstep(waterAnimationRange.x, waterAnimationRange.y, xzDistance)) * waterAnimationStrength;
+    }
 }
 
 vec4 getQuadCornerPos(in QuadData quad, uint cornerId) {
