@@ -233,6 +233,10 @@ public class MDICSectionRenderer extends AbstractSectionRenderer<MDICViewport, B
         glDisable(GL_CULL_FACE);
         glEnable(GL_DEPTH_TEST);
         glDepthFunc(GL_LEQUAL);
+        // Match vanilla translucent handling more closely: test against the existing
+        // depth buffer, but do not let one translucent water wall write depth and
+        // occlude the other walls behind it inside the same section draw.
+        glDepthMask(false);
         this.translucentTerrainShader.bind();
         glBindVertexArray(GlVertexArray.STATIC_VAO);//Needs to be before binding
         this.pipeline.setupAndBindTranslucent(viewport);
@@ -249,6 +253,7 @@ public class MDICSectionRenderer extends AbstractSectionRenderer<MDICViewport, B
         glBindSampler(1, 0);
         glBindTextureUnit(1, 0);
 
+        glDepthMask(true);
         glDisable(GL_BLEND);
     }
 

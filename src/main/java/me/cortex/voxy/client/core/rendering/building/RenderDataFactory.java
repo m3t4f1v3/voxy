@@ -216,6 +216,12 @@ public class RenderDataFactory {
         return quadData;
     }
 
+    private long repackFluidOverlayData(long rawState, long quadData, long fluidMetadata) {
+        int modelId = (int) ((quadData >> 26) & 0xFFFF);
+        int fluidId = this.modelMan.getFluidClientStateId(modelId);
+        return packPartialQuadData(fluidId, rawState, fluidMetadata);
+    }
+
     private int prepareSectionData(final long[] rawSectionData) {
         final var sectionData = this.sectionData;
         final var rawModelIds = this.modelMan._unsafeRawAccess();
@@ -579,14 +585,8 @@ public class RenderDataFactory {
                         long Am = this.sectionData[ai+1];
                         //If it isnt a fluid but contains one,
                         if (ModelQueries.containsFluid(Am)) {
-                            int modelId = (int) ((A>>26)&0xFFFF);
-                            A &= ~(0xFFFFL<<26);
-                            int fluidId = this.modelMan.getFluidClientStateId(modelId);
-                            A |= Integer.toUnsignedLong(fluidId)<<26;
                             Am = this.modelMan.getModelMetadataFromClientId(fluidId);
-
-                            //Update quad typing info
-                            A &= ~0b110L; A |= getQuadTyping(Am);
+                            A = this.repackFluidOverlayData(this.rawSectionData[ai >> 1], A, Am);
                         }
 
                         long lighter = this.sectionData[bi];
@@ -644,14 +644,8 @@ public class RenderDataFactory {
                         long B = this.sectionData[idx * 2 + 1];
 
                         if (ModelQueries.containsFluid(B)) {
-                            int modelId = (int) ((A>>26)&0xFFFF);
-                            A &= ~(0xFFFFL<<26);
-                            int fluidId = this.modelMan.getFluidClientStateId(modelId);
-                            A |= Integer.toUnsignedLong(fluidId)<<26;
                             B = this.modelMan.getModelMetadataFromClientId(fluidId);
-
-                            //We need to update the typing info for A
-                            A &= ~0b110L; A |= getQuadTyping(B);
+                            A = this.repackFluidOverlayData(this.rawSectionData[idx], A, B);
                         }
 
                         //Check and test if can cull W.R.T neighbor
@@ -1149,14 +1143,8 @@ public class RenderDataFactory {
 
                         //TODO: check if must cull against next entries face
                         if (ModelQueries.containsFluid(Am)) {
-                            int modelId = (int) ((A>>26)&0xFFFF);
-                            A &= ~(0xFFFFL<<26);
-                            int fluidId = this.modelMan.getFluidClientStateId(modelId);
-                            A |= Integer.toUnsignedLong(fluidId)<<26;
                             Am = this.modelMan.getModelMetadataFromClientId(fluidId);
-
-                            //Update quad typing info to be the fluid type
-                            A &= ~0b110L; A |= getQuadTyping(Am);
+                            A = this.repackFluidOverlayData(this.rawSectionData[ai >> 1], A, Am);
                         }
 
                         long lighter = this.sectionData[bi];
@@ -1222,14 +1210,8 @@ public class RenderDataFactory {
                     long Am = this.sectionData[sidx + 1];
 
                     if (ModelQueries.containsFluid(Am)) {
-                        int modelId = (int) ((A>>26)&0xFFFF);
-                        A &= ~(0xFFFFL<<26);
-                        int fluidId = this.modelMan.getFluidClientStateId(modelId);
-                        A |= Integer.toUnsignedLong(fluidId)<<26;
                         Am = this.modelMan.getModelMetadataFromClientId(fluidId);
-
-                        //Update quad typing info to be the fluid type
-                        A &= ~0b110L; A |= getQuadTyping(Am);
+                        A = this.repackFluidOverlayData(this.rawSectionData[i << 5], A, Am);
                     }
 
 
@@ -1286,11 +1268,8 @@ public class RenderDataFactory {
 
                     //TODO: check if must cull against next entries face
                     if (ModelQueries.containsFluid(Am)) {
-                        int modelId = (int) ((A>>26)&0xFFFF);
-                        A &= ~(0xFFFFL<<26);
-                        int fluidId = this.modelMan.getFluidClientStateId(modelId);
-                        A |= Integer.toUnsignedLong(fluidId)<<26;
                         Am = this.modelMan.getModelMetadataFromClientId(fluidId);
+                        A = this.repackFluidOverlayData(this.rawSectionData[i * 32 + 31], A, Am);
                     }
 
 
