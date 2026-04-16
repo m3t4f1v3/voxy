@@ -1,5 +1,7 @@
 package me.cortex.voxy.common.world.other;
 
+import net.minecraft.world.level.block.LiquidBlock;
+
 import static me.cortex.voxy.common.world.other.Mapper.withLight;
 
 //Mipper for data
@@ -14,61 +16,146 @@ public class Mipper {
 
 
     //TODO: instead of opacity only, add a level to see if the visual bounding box allows for seeing through top down etc
+    private static final int[] CUBE_INDEX_TO_Y = new int[]{0, 0, 0, 0, 1, 1, 1, 1};
+
+    private static boolean hasFluid(long state, Mapper mapper) {
+        return !mapper.getBlockStateFromBlockId(Mapper.getBlockId(state)).getFluidState().isEmpty();
+    }
+
+    private static boolean isPureFluid(long state, Mapper mapper) {
+        return mapper.getBlockStateFromBlockId(Mapper.getBlockId(state)).getBlock() instanceof LiquidBlock;
+    }
+
+    private static boolean isFullOpaque(long state, Mapper mapper) {
+        return mapper.getBlockStateOpacity(state) >= 15;
+    }
+
+    private static int pickRepresentative(long[] states, int blockId, int preferredY, Mapper mapper, boolean requireFluid) {
+        int bestIndex = -1;
+        int bestScore = Integer.MIN_VALUE;
+        for (int i = 0; i < states.length; i++) {
+            long state = states[i];
+            if (Mapper.isAir(state) || Mapper.getBlockId(state) != blockId) {
+                continue;
+            }
+            if (requireFluid && !hasFluid(state, mapper)) {
+                continue;
+            }
+            int score = 0;
+            score += CUBE_INDEX_TO_Y[i] == preferredY ? 128 : 0;
+            score += isPureFluid(state, mapper) ? 32 : 0;
+            score += Mapper.getLightId(state);
+            if (score > bestScore) {
+                bestScore = score;
+                bestIndex = i;
+            }
+        }
+        return bestIndex;
+    }
+
+    private static int chooseVisibleFluid(long[] states, Mapper mapper) {
+        int fluidLayer = -1;
+        for (int y = 1; y >= 0 && fluidLayer == -1; y--) {
+            for (int i = 0; i < states.length; i++) {
+                if (CUBE_INDEX_TO_Y[i] != y || Mapper.isAir(states[i])) {
+                    continue;
+                }
+                if (hasFluid(states[i], mapper)) {
+                    fluidLayer = y;
+                    break;
+                }
+            }
+        }
+        if (fluidLayer == -1) {
+            return -1;
+        }
+
+        for (int i = 0; i < states.length; i++) {
+            if (CUBE_INDEX_TO_Y[i] > fluidLayer && !Mapper.isAir(states[i]) && isFullOpaque(states[i], mapper)) {
+                return -1;
+            }
+        }
+
+        int bestFluidBlockId = -1;
+        int bestFluidScore = Integer.MIN_VALUE;
+        int opaqueScore = 0;
+        for (int i = 0; i < states.length; i++) {
+            long state = states[i];
+            if (Mapper.isAir(state) || CUBE_INDEX_TO_Y[i] != fluidLayer) {
+                continue;
+            }
+            if (hasFluid(state, mapper)) {
+                int blockId = Mapper.getBlockId(state);
+                int score = 0;
+                for (int j = 0; j < states.length; j++) {
+                    long other = states[j];
+                    if (Mapper.isAir(other) || CUBE_INDEX_TO_Y[j] != fluidLayer || Mapper.getBlockId(other) != blockId || !hasFluid(other, mapper)) {
+                        continue;
+                    }
+                    score += isPureFluid(other, mapper) ? 8 : 6;
+                }
+                if (score > bestFluidScore) {
+                    bestFluidScore = score;
+                    bestFluidBlockId = blockId;
+                }
+            } else if (isFullOpaque(state, mapper)) {
+                opaqueScore += 6;
+            }
+        }
+
+        if (bestFluidBlockId == -1 || opaqueScore > bestFluidScore) {
+            return -1;
+        }
+        return pickRepresentative(states, bestFluidBlockId, fluidLayer, mapper, true);
+    }
+
+    private static int chooseDominantState(long[] states, Mapper mapper) {
+        int bestIndex = -1;
+        int bestScore = Integer.MIN_VALUE;
+        for (int i = 0; i < states.length; i++) {
+            long state = states[i];
+            if (Mapper.isAir(state)) {
+                continue;
+            }
+            int blockId = Mapper.getBlockId(state);
+            int count = 0;
+            int highestY = 0;
+            for (int j = 0; j < states.length; j++) {
+                long other = states[j];
+                if (!Mapper.isAir(other) && Mapper.getBlockId(other) == blockId) {
+                    count++;
+                    highestY = Math.max(highestY, CUBE_INDEX_TO_Y[j]);
+                }
+            }
+
+            int score = 0;
+            score += count << 8;
+            score += mapper.getBlockStateOpacity(blockId) << 3;
+            score += highestY << 2;
+            score += hasFluid(state, mapper) ? 2 : 0;
+            score += isPureFluid(state, mapper) ? 1 : 0;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestIndex = pickRepresentative(states, blockId, highestY, mapper, false);
+            }
+        }
+        return bestIndex;
+    }
+
     public static long mip(long I000, long I100, long I001, long I101,
                            long I010, long I110, long I011, long I111,
                           Mapper mapper) {
-        //TODO: do a stable sort on all the entires, w.r.t the opacity and maybe light as a secondary???
-        // then select the highest value
-        // UPDATE, dumbass, the highest value _is_ the max/min
+        long[] states = new long[]{I000, I100, I001, I101, I010, I110, I011, I111};
 
-
-
-        int max = -1;
-
-        //TODO: mip with respect to all the variables, what that means is take whatever has the highest count and return that
-        //TODO: also average out the light level and set that as the new light level
-        //For now just take the most top corner
-
-        //TODO: i think it needs to compute the _max_ light level, since e.g. if a point is bright irl
-        // you can see it from really really damn far away.
-        // it could be a heavily weighted average with a huge preference to the top most lighting value
-        if (!Mapper.isAir(I111)) {
-            max = (mapper.getBlockStateOpacity(I111)<<4)|0b111;
-        }
-        if (!Mapper.isAir(I110)) {
-            max = Math.max((mapper.getBlockStateOpacity(I110)<<4)|0b110, max);
-        }
-        if (!Mapper.isAir(I011)) {
-            max = Math.max((mapper.getBlockStateOpacity(I011)<<4)|0b011, max);
-        }
-        if (!Mapper.isAir(I010)) {
-            max = Math.max((mapper.getBlockStateOpacity(I010)<<4)|0b010, max);
-        }
-        if (!Mapper.isAir(I101)) {
-            max = Math.max((mapper.getBlockStateOpacity(I101)<<4)|0b101, max);
-        }
-        if (!Mapper.isAir(I100)) {
-            max = Math.max((mapper.getBlockStateOpacity(I100)<<4)|0b100, max);
-        }
-        if (!Mapper.isAir(I001)) {
-            max = Math.max((mapper.getBlockStateOpacity(I001)<<4)|0b001, max);
-        }
-        if (!Mapper.isAir(I000)) {
-            max = Math.max((mapper.getBlockStateOpacity(I000)<<4), max);
+        int visibleFluid = chooseVisibleFluid(states, mapper);
+        if (visibleFluid != -1) {
+            return states[visibleFluid];
         }
 
-        if (max != -1) {
-            return switch (max&0b111) {
-                case 0 -> I000;
-                case 1 -> I001;
-                case 2 -> I010;
-                case 3 -> I011;
-                case 4 -> I100;
-                case 5 -> I101;
-                case 6 -> I110;
-                case 7 -> I111;
-                default -> throw new IllegalStateException("Unexpected value: " + (max&0b111));
-            };
+        int dominantState = chooseDominantState(states, mapper);
+        if (dominantState != -1) {
+            return states[dominantState];
         } else {
             int blockLight = (Mapper.getLightId(I000) & 0xF0) + (Mapper.getLightId(I001) & 0xF0) + (Mapper.getLightId(I010) & 0xF0) + (Mapper.getLightId(I011) & 0xF0) +
                     (Mapper.getLightId(I100) & 0xF0) + (Mapper.getLightId(I101) & 0xF0) + (Mapper.getLightId(I110) & 0xF0) + (Mapper.getLightId(I111) & 0xF0);

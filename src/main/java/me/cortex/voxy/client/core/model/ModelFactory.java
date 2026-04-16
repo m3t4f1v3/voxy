@@ -464,6 +464,9 @@ public class ModelFactory {
                 cullsSame = true;
             }
         }
+        if (blockState.getBlock() instanceof StairBlock) {
+            cullsSame = false;
+        }
 
 
         //Each face gets 1 byte, with the top 2 bytes being for whatever
@@ -513,6 +516,8 @@ public class ModelFactory {
             if (occludesFace) {
                 occludesFace &= ((float)writeCount)/(MODEL_TEXTURE_SIZE * MODEL_TEXTURE_SIZE) > 0.9;// only occlude if the face covers more than 90% of the face
             }
+            occludesFace &= faceCoversFullBlock;
+            occludesFace &= !(blockState.getBlock() instanceof StairBlock);
             metadata |= occludesFace?1:0;
             fullyOpaque &= occludesFace;
 
@@ -595,16 +600,21 @@ public class ModelFactory {
             MemoryUtil.memPutInt(uploadPtr, -1);//Set the default to nothing so that its faster on the gpu
         } else if (!isBiomeColourDependent) {
             MemoryUtil.memPutInt(uploadPtr, entry.tintingColour);
-        } else if (!this.biomes.isEmpty()) {
-            //Populate the list of biomes for the model state
-            int biomeIndex = this.modelsRequiringBiomeColours.size() * this.biomes.size();
+        } else {
+            // Always register biome-dependent models so a later biome arrival can rebuild
+            // the LUT and patch this model's colour-table pointer even if it was baked
+            // before any biome ids had been observed.
+            int modelBiomeIndex = this.modelsRequiringBiomeColours.size();
+            int biomeIndex = modelBiomeIndex * this.biomes.size();
             MemoryUtil.memPutInt(uploadPtr, biomeIndex);
             this.modelsRequiringBiomeColours.add(new Pair<>(modelId, blockState));
 
-            uploadResult.biomeUploadIndex = biomeIndex;
-            long clrUploadPtr = (uploadResult.biomeUpload = new MemoryBuffer(4L * this.biomes.size())).address;
-            for (var biome : this.biomes) {
-                MemoryUtil.memPutInt(clrUploadPtr, captureColourConstant(colourProvider, blockState, biome)|0xFF000000); clrUploadPtr += 4;
+            if (!this.biomes.isEmpty()) {
+                uploadResult.biomeUploadIndex = biomeIndex;
+                long clrUploadPtr = (uploadResult.biomeUpload = new MemoryBuffer(4L * this.biomes.size())).address;
+                for (var biome : this.biomes) {
+                    MemoryUtil.memPutInt(clrUploadPtr, captureColourConstant(colourProvider, blockState, biome)|0xFF000000); clrUploadPtr += 4;
+                }
             }
         }
         uploadPtr += 4;
@@ -722,6 +732,9 @@ public class ModelFactory {
     private static BlockColor getColourProvider(Block block) {
         BlockState defaultState = block.defaultBlockState();
         var blockColors = Minecraft.getInstance().getBlockColors();
+        if (block instanceof LiquidBlock) {
+            return (state, world, pos, tintIndex) -> blockColors.getColor(state, world, pos, tintIndex);
+        }
         int color;
         try {
             color = blockColors.getColor(defaultState, null, BlockPos.ZERO, 0);

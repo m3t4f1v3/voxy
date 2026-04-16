@@ -3,13 +3,13 @@ package me.cortex.voxy.client.config;
 import com.google.common.collect.ImmutableList;
 import me.cortex.voxy.client.ClientSessionEvents;
 import me.cortex.voxy.client.core.IGetVoxyRenderSystem;
+import me.cortex.voxy.client.core.SSAO;
 import me.cortex.voxy.client.core.util.IrisUtil;
-import me.cortex.voxy.client.mixin.sodium.AccessorSodiumWorldRenderer;
 import me.cortex.voxy.commonImpl.VoxyCommon;
 import me.jellysquid.mods.sodium.client.gui.options.*;
+import me.jellysquid.mods.sodium.client.gui.options.control.CyclingControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.SliderControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.TickBoxControl;
-import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
@@ -17,6 +17,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public abstract class VoxyConfigScreenPages {
+    private static final Component[] SSAO_MODE_LABELS = {
+            Component.translatable("voxy.config.general.ssao_mode.auto"),
+            Component.translatable("voxy.config.general.ssao_mode.basic"),
+            Component.translatable("voxy.config.general.ssao_mode.better"),
+            Component.translatable("voxy.config.general.ssao_mode.best")
+    };
+
     private VoxyConfigScreenPages(){}
 
     public static OptionPage voxyOptionPage = null;
@@ -151,9 +158,33 @@ public abstract class VoxyConfigScreenPages {
                         .setBinding((s, v)-> s.renderVanillaFog = v, s -> s.renderVanillaFog)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build()
+                ).add(OptionImpl.createBuilder(SSAO.SSAOMode.class, storage)
+                        .setName(Component.translatable("voxy.config.general.ssao_mode"))
+                        .setTooltip(Component.translatable("voxy.config.general.ssao_mode.tooltip"))
+                        .setControl(opt -> new CyclingControl<>(opt, SSAO.SSAOMode.class, SSAO_MODE_LABELS))
+                        .setBinding((s, v) -> {
+                            s.setSSAOMode(v);
+                            reloadActiveRenderer();
+                        }, VoxyConfig::getSSAOMode)
+                        .setImpact(OptionImpact.HIGH)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .build()
                 ).build()
         );
         return new OptionPage(Component.translatable("voxy.config.title"), ImmutableList.copyOf(groups));
+    }
+
+    private static void reloadActiveRenderer() {
+        try {
+            var minecraft = Minecraft.getInstance();
+            var renderer = (IGetVoxyRenderSystem) minecraft.levelRenderer;
+            if (renderer != null && minecraft.level != null && VoxyConfig.CONFIG.isRenderingEnabled()) {
+                renderer.voxy$shutdownRenderer();
+                renderer.voxy$createRenderer();
+            }
+        } catch (Throwable ignored) {}
+
+        try { IrisUtil.reload(); } catch (Throwable ignored) {}
     }
 
     private static final int SUBDIV_IN_MAX = 100;

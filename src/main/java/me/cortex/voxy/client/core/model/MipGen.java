@@ -15,6 +15,7 @@ public class MipGen {
     }
     private static final short[] SCRATCH = new short[MODEL_TEXTURE_SIZE*MODEL_TEXTURE_SIZE];
     private static final ByteArrayFIFOQueue QUEUE = new ByteArrayFIFOQueue(MODEL_TEXTURE_SIZE*MODEL_TEXTURE_SIZE);
+    private static final int TINT_MASK_ALPHA_BIT = 1;
 
     private static long getOffset(int bx, int by, int i) {
         bx += i&(MODEL_TEXTURE_SIZE-1);
@@ -68,6 +69,20 @@ public class MipGen {
         }
     }
 
+    private static int encodeTintMask(int colour, int depth) {
+        int alpha = colour >>> 24;
+        if (alpha == 0) {
+            return colour;
+        }
+        alpha = (alpha & ~TINT_MASK_ALPHA_BIT) | ((depth >>> 7) & TINT_MASK_ALPHA_BIT);
+        return (colour & 0x00FFFFFF) | (alpha << 24);
+    }
+
+    private static int clearTintMask(int colour) {
+        int alpha = (colour >>> 24) & ~TINT_MASK_ALPHA_BIT;
+        return (colour & 0x00FFFFFF) | (alpha << 24);
+    }
+
     public static void putTextures(boolean darkened, ColourDepthTextureData[] textures, MemoryBuffer into) {
         //if (MODEL_TEXTURE_SIZE != 16) {throw new IllegalStateException("THIS METHOD MUST BE REDONE IF THIS CONST CHANGES");}
 
@@ -82,10 +97,12 @@ public class MipGen {
             int y = (i&1)*MODEL_TEXTURE_SIZE;
             int j = 0;
             boolean anyTransparent = false;
-            for (int t : textures[i].colour()) {
+            int[] colourData = textures[i].colour();
+            int[] depthData = textures[i].depth();
+            for (int t : colourData) {
                 int o = ((y+(j>>LAYERS))*LENGTH_B + ((j&(MODEL_TEXTURE_SIZE-1))+x))*4; j++;//LAYERS here is just cause faster
                 //t = ((t&0xFF000000)==0)?0x00_FF_00_FF:t;//great for testing
-                MemoryUtil.memPutInt(addr+o, t);
+                MemoryUtil.memPutInt(addr+o, encodeTintMask(t, depthData[j-1]));
                 anyTransparent |= ((t&0xFF000000)==0);
             }
             solidMsk |= (anyTransparent?1:0)<<i;
@@ -96,23 +113,39 @@ public class MipGen {
         }
 
 
-        //Mip the scratch
+        // Mip each face tile independently. The atlas UV layout treats the packed
+        // 3x2 sheet as six isolated square tiles, so downsampling the whole sheet
+        // as one image makes low mips bleed across face boundaries.
         long dAddr = addr;
         for (int i = 0; i < LAYERS-1; i++) {
             long sAddr = dAddr;
             dAddr += (MODEL_TEXTURE_SIZE*MODEL_TEXTURE_SIZE*3*2*4)>>(i<<1);//is.. i*2 because shrink both MODEL_TEXTURE_SIZE by >>i so is 2*i total shift
-            int width = (MODEL_TEXTURE_SIZE*3)>>(i+1);
-            int sWidth = (MODEL_TEXTURE_SIZE*3)>>i;
-            int height = (MODEL_TEXTURE_SIZE*2)>>(i+1);
+            int sTileSize = MODEL_TEXTURE_SIZE >> i;
+            int dTileSize = sTileSize >> 1;
+            int sWidth = sTileSize * 3;
+            int dWidth = dTileSize * 3;
             //TODO: OPTIMZIE THIS
-            for (int px = 0; px < width; px++) {
-                for (int py = 0; py < height; py++) {
-                    long bp = sAddr + (px*2 + py*2*sWidth)*4;
-                    int C00 = MemoryUtil.memGetInt(bp);
-                    int C01 = MemoryUtil.memGetInt(bp+sWidth*4);
-                    int C10 = MemoryUtil.memGetInt(bp+4);
-                    int C11 = MemoryUtil.memGetInt(bp+sWidth*4+4);
-                    MemoryUtil.memPutInt(dAddr + (px+py*width) * 4L, TextureUtils.mipColours(darkened, C00, C01, C10, C11));
+            for (int face = 0; face < 6; face++) {
+                int sBx = (face>>1) * sTileSize;
+                int sBy = (face&1) * sTileSize;
+                int dBx = (face>>1) * dTileSize;
+                int dBy = (face&1) * dTileSize;
+                for (int px = 0; px < dTileSize; px++) {
+                    for (int py = 0; py < dTileSize; py++) {
+                        long bp = sAddr + ((sBx + px*2L) + (sBy + py*2L) * sWidth) * 4;
+                        int C00 = MemoryUtil.memGetInt(bp);
+                        int C01 = MemoryUtil.memGetInt(bp+sWidth*4L);
+                        int C10 = MemoryUtil.memGetInt(bp+4);
+                        int C11 = MemoryUtil.memGetInt(bp+sWidth*4L+4);
+                        if (i == 0) {
+                            C00 = clearTintMask(C00);
+                            C01 = clearTintMask(C01);
+                            C10 = clearTintMask(C10);
+                            C11 = clearTintMask(C11);
+                        }
+                        MemoryUtil.memPutInt(dAddr + ((dBx + px) + (dBy + py) * (long) dWidth) * 4L,
+                                TextureUtils.mipColours(darkened, C00, C01, C10, C11));
+                    }
                 }
             }
         }
