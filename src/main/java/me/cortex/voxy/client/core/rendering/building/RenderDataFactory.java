@@ -585,6 +585,7 @@ public class RenderDataFactory {
                         long Am = this.sectionData[ai+1];
                         //If it isnt a fluid but contains one,
                         if (ModelQueries.containsFluid(Am)) {
+                            int fluidId = this.modelMan.getFluidClientStateId((int) ((A >> 26) & 0xFFFF));
                             Am = this.modelMan.getModelMetadataFromClientId(fluidId);
                             A = this.repackFluidOverlayData(this.rawSectionData[ai >> 1], A, Am);
                         }
@@ -644,6 +645,7 @@ public class RenderDataFactory {
                         long B = this.sectionData[idx * 2 + 1];
 
                         if (ModelQueries.containsFluid(B)) {
+                            int fluidId = this.modelMan.getFluidClientStateId((int) ((A >> 26) & 0xFFFF));
                             B = this.modelMan.getModelMetadataFromClientId(fluidId);
                             A = this.repackFluidOverlayData(this.rawSectionData[idx], A, B);
                         }
@@ -1143,6 +1145,7 @@ public class RenderDataFactory {
 
                         //TODO: check if must cull against next entries face
                         if (ModelQueries.containsFluid(Am)) {
+                            int fluidId = this.modelMan.getFluidClientStateId((int) ((A >> 26) & 0xFFFF));
                             Am = this.modelMan.getModelMetadataFromClientId(fluidId);
                             A = this.repackFluidOverlayData(this.rawSectionData[ai >> 1], A, Am);
                         }
@@ -1210,6 +1213,7 @@ public class RenderDataFactory {
                     long Am = this.sectionData[sidx + 1];
 
                     if (ModelQueries.containsFluid(Am)) {
+                        int fluidId = this.modelMan.getFluidClientStateId((int) ((A >> 26) & 0xFFFF));
                         Am = this.modelMan.getModelMetadataFromClientId(fluidId);
                         A = this.repackFluidOverlayData(this.rawSectionData[i << 5], A, Am);
                     }
@@ -1268,6 +1272,7 @@ public class RenderDataFactory {
 
                     //TODO: check if must cull against next entries face
                     if (ModelQueries.containsFluid(Am)) {
+                        int fluidId = this.modelMan.getFluidClientStateId((int) ((A >> 26) & 0xFFFF));
                         Am = this.modelMan.getModelMetadataFromClientId(fluidId);
                         A = this.repackFluidOverlayData(this.rawSectionData[i * 32 + 31], A, Am);
                     }
