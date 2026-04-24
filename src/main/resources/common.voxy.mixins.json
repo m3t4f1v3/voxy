@@ -7,7 +7,13 @@
   },
   "mixins": [
     "chunky.MixinFabricWorld",
-    "minecraft.MixinWorld"
+    "minecraft.MixinClientLevel",
+    "minecraft.MixinClientPacketListener",
+    "minecraft.MixinServerLevel",
+    "minecraft.MixinWorld",
+    "sable.MixinClientSubLevelFinalizeLighting",
+    "sable.MixinPhysicsChunkTicketManager",
+    "sable.MixinSubLevelTrackingSystem"
   ],
   "overwrites": {
     "requireAnnotations": true
