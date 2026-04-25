@@ -1,5 +1,6 @@
 package me.cortex.voxy.commonImpl.mixin.sable;
 
+import me.cortex.voxy.commonImpl.compat.sable.SableLodChunkManager;
 import me.cortex.voxy.commonImpl.compat.sable.SableTrackingRefreshManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
@@ -20,11 +21,15 @@ public class MixinSubLevelTrackingSystem {
 
     @Inject(method = "shouldLoad", at = @At("HEAD"), cancellable = true, remap = false)
     private void voxy$extendTrackingDistance(Player player, Vector3dc entityPosition, CallbackInfoReturnable<Boolean> cir) {
-        if (SableTrackingRefreshManager.shouldKeepExtendedTracking(
-                this.level,
-                player,
-                entityPosition,
-                player.level().getGameTime())) {
+        long gameTime = this.level.getGameTime();
+        boolean withinVoxyRange = SableLodChunkManager.isWithinTrackingRange(
+                player.getX(),
+                player.getZ(),
+                entityPosition.x(),
+                entityPosition.z(),
+                gameTime);
+        boolean withinTrackedBounds = SableTrackingRefreshManager.shouldKeepExtendedTracking(this.level, player, entityPosition, gameTime);
+        if (withinVoxyRange || withinTrackedBounds) {
             cir.setReturnValue(true);
         }
     }

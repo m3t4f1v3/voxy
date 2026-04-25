@@ -1,6 +1,7 @@
 package me.cortex.voxy.client.mixin.sodium;
 
 import me.cortex.voxy.client.ICheekyClientChunkCache;
+import me.cortex.voxy.client.compat.sable.SableSubLevelVoxyManager;
 import me.cortex.voxy.client.config.VoxyConfig;
 import me.cortex.voxy.client.core.IGetVoxyRenderSystem;
 import me.cortex.voxy.client.core.VoxyRenderSystem;
@@ -49,6 +50,11 @@ public class MixinRenderSectionManager {
 
     @Inject(method = "onChunkRemoved", at = @At("HEAD"))
     private void voxy$injectIngest(int x, int z, CallbackInfo ci) {
+        if (SableSubLevelVoxyManager.isPlotChunk(this.level, x, z)) {
+            SableSubLevelVoxyManager.onPlotChunkRemoved(this.level, new ChunkPos(x, z));
+            return;
+        }
+
         //TODO: Am not quite sure if this is right
         if (VoxyConfig.CONFIG.ingestEnabled && !BOBBY_INSTALLED) {
             var cccm = (ICheekyClientChunkCache)this.level.getChunkSource();
@@ -64,6 +70,14 @@ public class MixinRenderSectionManager {
 
     @Inject(method = "onChunkAdded", at = @At("HEAD"))
     private void voxy$ingestOnAdd(int x, int z, CallbackInfo ci) {
+        if (SableSubLevelVoxyManager.isPlotChunk(this.level, x, z)) {
+            var chunk = this.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false);
+            if (chunk != null) {
+                SableSubLevelVoxyManager.tryIngestPlotChunk(this.level, chunk);
+            }
+            return;
+        }
+
         if (this.level.levelRenderer != null && VoxyConfig.CONFIG.ingestEnabled) {
             var cccm = this.level.getChunkSource();
             if (cccm != null) {
@@ -103,11 +117,21 @@ public class MixinRenderSectionManager {
         if (flags == 0)//Only process things with stuff
             return true;
 
+        int x = instance.getChunkX();
+        int y = instance.getChunkY();
+        int z = instance.getChunkZ();
+
+        if (SableSubLevelVoxyManager.isPlotChunk(this.level, x, z)) {
+            if (VoxyConfig.CONFIG.ingestEnabled) {
+                SableSubLevelVoxyManager.tryIngestPlotSection(this.level, SectionPos.of(x, y, z));
+            }
+            return true;
+        }
+
         VoxyRenderSystem system = ((IGetVoxyRenderSystem)(this.level.levelRenderer)).voxy$getRenderSystem();
         if (system == null) {
             return true;
         }
-        int x = instance.getChunkX(), y = instance.getChunkY(), z = instance.getChunkZ();
 
         if (wasBuilt && VoxyConfig.CONFIG.ingestEnabled) {
             var tracker = ((AccessorChunkTracker)ChunkTrackerHolder.get(this.level)).getChunkStatus();

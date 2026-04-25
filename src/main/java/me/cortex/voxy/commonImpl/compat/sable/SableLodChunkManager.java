@@ -323,7 +323,9 @@ public final class SableLodChunkManager {
         if (level.getServer().isDedicatedServer()) {
             return DEDICATED_SERVER_HOLDING_CHUNK_WAKE_PADDING_BLOCKS;
         }
-        return config.horizontalRenderDistanceBlocks() * 0.5;
+        // Integrated testing should wake holding chunks across the full configured radius so
+        // plot-hosted physics objects stay discoverable all the way to the Voxy horizon.
+        return config.horizontalRenderDistanceBlocks();
     }
 
     private static double distanceToRange(double value, double min, double max) {

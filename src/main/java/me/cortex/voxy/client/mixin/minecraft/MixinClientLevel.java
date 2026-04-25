@@ -1,9 +1,9 @@
 package me.cortex.voxy.client.mixin.minecraft;
 
+import me.cortex.voxy.client.compat.sable.SableSubLevelVoxyManager;
 import me.cortex.voxy.client.config.VoxyConfig;
 import me.cortex.voxy.common.world.service.VoxelIngestService;
 import me.cortex.voxy.commonImpl.VoxyCommon;
-import me.cortex.voxy.commonImpl.VoxyInstance;
 import me.cortex.voxy.commonImpl.WorldIdentifier;
 import me.cortex.voxy.commonImpl.compat.sable.SableClientChunkRetention;
 import net.minecraft.client.multiplayer.ClientChunkCache;
@@ -64,17 +64,32 @@ public abstract class MixinClientLevel {
         if (!VoxyConfig.CONFIG.ingestEnabled) return;//Only ingest if setting enabled
 
         var self = (ClientLevel)(Object)this;
+        var sectionPos = SectionPos.of(pos);
+        int x = pos.getX()&15;
+        int y = pos.getY()&15;
+        int z = pos.getZ()&15;
+        boolean borderChange = x == 0 || x==15 || y==0 || y==15 || z==0||z==15;
+
+        if (SableSubLevelVoxyManager.tryIngestPlotSection(self, sectionPos)) {
+            if (!borderChange) {
+                return;
+            }
+
+            if (x == 0) SableSubLevelVoxyManager.tryIngestPlotSection(self, SectionPos.of(sectionPos.x() - 1, sectionPos.y(), sectionPos.z()));
+            if (x == 15) SableSubLevelVoxyManager.tryIngestPlotSection(self, SectionPos.of(sectionPos.x() + 1, sectionPos.y(), sectionPos.z()));
+            if (y == 0) SableSubLevelVoxyManager.tryIngestPlotSection(self, SectionPos.of(sectionPos.x(), sectionPos.y() - 1, sectionPos.z()));
+            if (y == 15) SableSubLevelVoxyManager.tryIngestPlotSection(self, SectionPos.of(sectionPos.x(), sectionPos.y() + 1, sectionPos.z()));
+            if (z == 0) SableSubLevelVoxyManager.tryIngestPlotSection(self, SectionPos.of(sectionPos.x(), sectionPos.y(), sectionPos.z() - 1));
+            if (z == 15) SableSubLevelVoxyManager.tryIngestPlotSection(self, SectionPos.of(sectionPos.x(), sectionPos.y(), sectionPos.z() + 1));
+            return;
+        }
+
         var wi = WorldIdentifier.of(self);
         if (wi == null) {
             return;
         }
 
-        var sectionPos = SectionPos.of(pos);
         boolean retainedChunk = SableClientChunkRetention.isChunkRetained(self, sectionPos.chunk());
-        int x = pos.getX()&15;
-        int y = pos.getY()&15;
-        int z = pos.getZ()&15;
-        boolean borderChange = x == 0 || x==15 || y==0 || y==15 || z==0||z==15;
 
         if (!retainedChunk) {
             //TODO: is this _really_ needed, we should have enough processing power to not need todo it if its only a

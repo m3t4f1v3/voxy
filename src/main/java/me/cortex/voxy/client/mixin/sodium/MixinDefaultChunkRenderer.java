@@ -1,5 +1,6 @@
 package me.cortex.voxy.client.mixin.sodium;
 
+import me.cortex.voxy.client.compat.sable.SableSubLevelVoxyManager;
 import me.cortex.voxy.client.VoxyClient;
 import me.cortex.voxy.client.core.IGetVoxyRenderSystem;
 import me.cortex.voxy.client.core.rendering.Viewport;
@@ -55,6 +56,7 @@ public abstract class MixinDefaultChunkRenderer extends ShaderChunkRenderer {
                     viewport = renderer.setupViewport(matrices, camera.x, camera.y, camera.z);
                 }
                 renderer.renderOpaque(viewport);
+                SableSubLevelVoxyManager.renderActiveSubLevels(Minecraft.getInstance().level, matrices.projection(), matrices.modelView(), camera.x, camera.y, camera.z);
             }
         }
     }

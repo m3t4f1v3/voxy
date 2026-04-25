@@ -6,6 +6,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import me.cortex.voxy.client.compat.sable.SableSubLevelVoxyManager;
 import me.cortex.voxy.client.core.IGetVoxyRenderSystem;
 import me.cortex.voxy.client.core.rendering.Viewport;
 import me.cortex.voxy.client.core.util.IrisUtil;
@@ -42,6 +43,7 @@ public class MixinSodiumWorldRendererVS {
                     viewport = renderer.setupViewport(matrices, x, y, z);
                 }
                 renderer.renderOpaque(viewport);
+                SableSubLevelVoxyManager.renderActiveSubLevels(Minecraft.getInstance().level, matrices.projection(), matrices.modelView(), x, y, z);
             }
         }
     }

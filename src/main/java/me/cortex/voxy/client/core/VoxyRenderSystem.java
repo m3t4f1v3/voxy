@@ -177,6 +177,10 @@ public class VoxyRenderSystem {
 
 
     public Viewport<?> setupViewport(ChunkRenderMatrices matrices, double cameraX, double cameraY, double cameraZ) {
+        return this.setupViewport(matrices.projection(), matrices.modelView(), cameraX, cameraY, cameraZ);
+    }
+
+    public Viewport<?> setupViewport(Matrix4fc projection, Matrix4fc modelView, double cameraX, double cameraY, double cameraZ) {
         var viewport = this.getViewport();
         if (viewport == null) {
             return null;
@@ -190,7 +194,7 @@ public class VoxyRenderSystem {
         }
 
         //cameraY += 100;
-        var voxyProjection = computeProjectionMat(matrices.projection());
+        var voxyProjection = computeProjectionMat(projection);
 
         int[] dims = new int[4];
         glGetIntegerv(GL_VIEWPORT, dims);
@@ -207,9 +211,9 @@ public class VoxyRenderSystem {
         }
 
         viewport
-                .setVanillaProjection(matrices.projection())
+                .setVanillaProjection(projection)
                 .setProjection(voxyProjection)
-                .setModelView(new Matrix4f(matrices.modelView()))
+                .setModelView(modelView)
                 .setCamera(cameraX, cameraY, cameraZ)
                 .setScreenSize(width, height)
                 .update();

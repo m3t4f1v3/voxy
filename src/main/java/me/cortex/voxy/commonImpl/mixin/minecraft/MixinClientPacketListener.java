@@ -1,5 +1,6 @@
 package me.cortex.voxy.commonImpl.mixin.minecraft;
 
+import me.cortex.voxy.client.compat.sable.SableSubLevelVoxyManager;
 import me.cortex.voxy.commonImpl.compat.sable.SableClientChunkRetention;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -49,6 +50,10 @@ public class MixinClientPacketListener {
     @Inject(method = "enableChunkLight", at = @At("TAIL"))
     private void voxy$bootstrapSableParentChunkLighting(LevelChunk chunk, int chunkX, int chunkZ, CallbackInfo ci) {
         if (this.level == null) {
+            return;
+        }
+
+        if (SableSubLevelVoxyManager.tryIngestPlotChunk(this.level, chunk)) {
             return;
         }
 

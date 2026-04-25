@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import me.cortex.voxy.client.ICheekyClientChunkCache;
+import me.cortex.voxy.client.compat.sable.SableSubLevelVoxyManager;
 import me.cortex.voxy.client.config.VoxyConfig;
 import me.cortex.voxy.commonImpl.compat.sable.SableClientChunkRetention;
 import me.cortex.voxy.common.world.service.VoxelIngestService;
@@ -94,6 +95,11 @@ public class MixinClientChunkCache implements ICheekyClientChunkCache {
 
     @Inject(method = "drop", at = @At("HEAD"))
     public void voxy$captureChunkBeforeUnload(ChunkPos pos, CallbackInfo ci) {
+        if (SableSubLevelVoxyManager.isPlotChunk(this.level, pos.x, pos.z)) {
+            SableSubLevelVoxyManager.onPlotChunkRemoved(this.level, pos);
+            return;
+        }
+
         if (VoxyConfig.CONFIG.ingestEnabled && BOBBY_INSTALLED) {
             var chunk = this.voxy$cheekyGetChunk(pos.x, pos.z);
             if (chunk != null) {

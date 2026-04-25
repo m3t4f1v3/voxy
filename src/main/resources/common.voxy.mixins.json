@@ -12,6 +12,7 @@
     "minecraft.MixinServerLevel",
     "minecraft.MixinWorld",
     "sable.MixinClientSubLevelFinalizeLighting",
+    "sable.MixinClientSubLevelRemove",
     "sable.MixinPhysicsChunkTicketManager",
     "sable.MixinSubLevelTrackingSystem"
   ],
