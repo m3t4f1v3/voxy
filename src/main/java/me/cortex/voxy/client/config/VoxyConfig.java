@@ -31,6 +31,7 @@ public class VoxyConfig implements OptionStorage<VoxyConfig> {
     public boolean enableRendering = true;
     public boolean ingestEnabled = true;
     public float sectionRenderDistance = 16;
+    public int requestDistance = 0;
     public int serviceThreads = (int) Math.max(Runtime.getRuntime().availableProcessors() * 2 / 1.5, 1);
     public float subDivisionSize = 64;
     public boolean renderVoxyFog = true;
@@ -115,5 +116,16 @@ public class VoxyConfig implements OptionStorage<VoxyConfig> {
 
     public boolean isRenderingEnabled() {
         return VoxyCommon.isAvailable() && this.enabled && this.enableRendering;
+    }
+
+    public boolean isRequestDistanceActive(int vanillaRenderDistance) {
+        return this.requestDistance > 0 && this.requestDistance > vanillaRenderDistance;
+    }
+
+    public int getEffectiveRequestDistance(int vanillaRenderDistance) {
+        if (!this.isRequestDistanceActive(vanillaRenderDistance)) {
+            return vanillaRenderDistance;
+        }
+        return this.requestDistance;
     }
 }

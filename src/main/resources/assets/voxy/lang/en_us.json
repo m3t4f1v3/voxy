@@ -25,6 +25,10 @@
   "voxy.config.general.renderDistance": "Render distance",
   "voxy.config.general.renderDistance.tooltip": "Render distance of voxy in chunks",
 
+  "voxy.config.general.requestDistance": "Request distance",
+  "voxy.config.general.requestDistance.off": "Off",
+  "voxy.config.general.requestDistance.tooltip": "When greater than vanilla render distance, tells the server a higher view distance to receive extra chunks for LOD conversion. Requires a server with sufficient view-distance. Increases memory usage.",
+
   "voxy.config.general.environmental_fog": "Enable environmental fog",
   "voxy.config.general.environmental_fog.tooltip": "Enables or disables voxy rendering environmental fog",
 

@@ -172,6 +172,53 @@ public class VoxelIngestService {
         return true;
     }
 
+    public boolean enqueueIngestDistant(WorldEngine engine, LevelChunk chunk) {
+        if (!this.service.isLive()) {
+            return false;
+        }
+        if (!engine.isLive()) {
+            throw new IllegalStateException("Tried inserting chunk into WorldEngine that was not alive");
+        }
+
+        engine.markActive();
+
+        var lightingProvider = chunk.getLevel().getLightEngine();
+        var blp = lightingProvider.getLayerListener(LightLayer.BLOCK);
+        var slp = lightingProvider.getLayerListener(LightLayer.SKY);
+
+        int i = chunk.getMinSection() - 1;
+        boolean enqueued = false;
+        for (var section : chunk.getSections()) {
+            i++;
+            if (section == null || !shouldIngestSection(section, chunk.getPos().x, i, chunk.getPos().z)) {
+                continue;
+            }
+
+            var pos = SectionPos.of(chunk.getPos(), i);
+
+            var bl = blp.getDataLayerData(pos);
+            if (bl != null) {
+                bl = bl.copy();
+            }
+
+            var sl = slp.getDataLayerData(pos);
+            if (sl != null) {
+                sl = sl.copy();
+            }
+
+            engine.markActive();
+            this.ingestQueue.add(new IngestSection(chunk.getPos().x, i, chunk.getPos().z, engine, section, bl, sl));
+            try {
+                this.service.execute();
+                enqueued = true;
+            } catch (Exception e) {
+                Logger.error("Executing had an error: assume shutting down, aborting", e);
+                break;
+            }
+        }
+        return enqueued;
+    }
+
     public int getTaskCount() {
         return this.service.numJobs();
     }
@@ -194,6 +241,28 @@ public class VoxelIngestService {
     //Try to automatically ingest the chunk into the correct world
     public static boolean tryAutoIngestChunk(LevelChunk chunk) {
         return tryIngestChunk(WorldIdentifier.of(chunk.getLevel()), chunk);
+    }
+
+    public static boolean tryAutoIngestDistantChunk(LevelChunk chunk) {
+        if (chunk == null) {
+            return false;
+        }
+        var worldId = WorldIdentifier.of(chunk.getLevel());
+        if (worldId == null) {
+            return false;
+        }
+        var instance = VoxyCommon.getInstance();
+        if (instance == null) {
+            return false;
+        }
+        if (!instance.isIngestEnabled(worldId)) {
+            return false;
+        }
+        var engine = instance.getOrCreate(worldId);
+        if (engine == null) {
+            return false;
+        }
+        return instance.getIngestService().enqueueIngestDistant(engine, chunk);
     }
 
     private boolean rawIngest0(WorldEngine engine, LevelChunkSection section, int x, int y, int z, DataLayer bl, DataLayer sl) {

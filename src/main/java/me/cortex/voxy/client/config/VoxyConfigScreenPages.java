@@ -3,6 +3,7 @@ package me.cortex.voxy.client.config;
 import com.google.common.collect.ImmutableList;
 import me.cortex.voxy.client.ClientSessionEvents;
 import me.cortex.voxy.client.core.IGetVoxyRenderSystem;
+import me.cortex.voxy.client.core.RequestDistanceHelper;
 import me.cortex.voxy.client.core.SSAO;
 import me.cortex.voxy.client.core.util.IrisUtil;
 import me.cortex.voxy.client.mixin.sodium.AccessorSodiumWorldRenderer;
@@ -149,6 +150,18 @@ public abstract class VoxyConfigScreenPages {
                         }, s -> Math.min(MAX_RENDER_DISTANCE, Math.round(s.sectionRenderDistance * 16)))
                         .setImpact(OptionImpact.LOW)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .build()
+                ).add(OptionImpl.createBuilder(int.class, storage)
+                        .setName(Component.translatable("voxy.config.general.requestDistance"))
+                        .setTooltip(Component.translatable("voxy.config.general.requestDistance.tooltip"))
+                        .setControl(opt -> new SliderControl(opt, 0, 32, 1, v -> v < 1
+                                ? Component.translatable("voxy.config.general.requestDistance.off")
+                                : Component.literal(Integer.toString(v))))
+                        .setBinding((s, v) -> {
+                            s.requestDistance = v;
+                            RequestDistanceHelper.resendClientSettings();
+                        }, s -> s.requestDistance)
+                        .setImpact(OptionImpact.MEDIUM)
                         .build()
                 ).build()
         );
