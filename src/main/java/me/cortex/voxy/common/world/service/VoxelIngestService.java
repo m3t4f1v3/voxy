@@ -173,50 +173,53 @@ public class VoxelIngestService {
     }
 
     public boolean enqueueIngestDistant(WorldEngine engine, LevelChunk chunk) {
-        if (!this.service.isLive()) {
-            return false;
-        }
-        if (!engine.isLive()) {
-            throw new IllegalStateException("Tried inserting chunk into WorldEngine that was not alive");
-        }
-
-        engine.markActive();
-
-        var lightingProvider = chunk.getLevel().getLightEngine();
-        var blp = lightingProvider.getLayerListener(LightLayer.BLOCK);
-        var slp = lightingProvider.getLayerListener(LightLayer.SKY);
-
-        int i = chunk.getMinSection() - 1;
-        boolean enqueued = false;
-        for (var section : chunk.getSections()) {
-            i++;
-            if (section == null || !shouldIngestSection(section, chunk.getPos().x, i, chunk.getPos().z)) {
-                continue;
-            }
-
-            var pos = SectionPos.of(chunk.getPos(), i);
-
-            var bl = blp.getDataLayerData(pos);
-            if (bl != null) {
-                bl = bl.copy();
-            }
-
-            var sl = slp.getDataLayerData(pos);
-            if (sl != null) {
-                sl = sl.copy();
-            }
-
-            engine.markActive();
-            this.ingestQueue.add(new IngestSection(chunk.getPos().x, i, chunk.getPos().z, engine, section, bl, sl));
-            try {
-                this.service.execute();
-                enqueued = true;
-            } catch (Exception e) {
-                Logger.error("Executing had an error: assume shutting down, aborting", e);
-                break;
-            }
-        }
-        return enqueued;
+//        if (!this.service.isLive()) {
+//            return false;
+//        }
+//        if (!engine.isLive()) {
+//            throw new IllegalStateException("Tried inserting chunk into WorldEngine that was not alive");
+//        }
+//
+//        engine.markActive();
+//
+//        var lightingProvider = chunk.getLevel().getLightEngine();
+//        var blp = lightingProvider.getLayerListener(LightLayer.BLOCK);
+//        var slp = lightingProvider.getLayerListener(LightLayer.SKY);
+//
+//        int i = chunk.getMinSection() - 1;
+//        boolean enqueued = false;
+//        for (var section : chunk.getSections()) {
+//            i++;
+//            if (section == null || !shouldIngestSection(section, chunk.getPos().x, i, chunk.getPos().z)) {
+//                continue;
+//            }
+//
+//            var pos = SectionPos.of(chunk.getPos(), i);
+//
+//            var bl = blp.getDataLayerData(pos);
+//            if (bl != null) {
+//                bl = bl.copy();
+//            }
+//
+//            var sl = slp.getDataLayerData(pos);
+//            if (sl != null) {
+//                sl = sl.copy();
+//            }
+//
+//            engine.markActive();
+//            this.ingestQueue.add(new IngestSection(chunk.getPos().x, i, chunk.getPos().z, engine, section, bl, sl));
+//            try {
+//                this.service.execute();
+//                enqueued = true;
+//            } catch (Exception e) {
+//                Logger.error("Executing had an error: assume shutting down, aborting", e);
+//                break;
+//            }
+//        }
+//        return enqueued;
+        // Reuse the original ingest path so we keep the strict lighting readiness check
+        // (LIGHT_AND_DATA gating) that prevents ingesting chunks with incomplete lighting.
+        return this.enqueueIngest(engine, chunk);
     }
 
     public int getTaskCount() {
