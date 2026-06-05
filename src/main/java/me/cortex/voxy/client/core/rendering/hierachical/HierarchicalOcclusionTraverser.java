@@ -97,6 +97,9 @@ public class HierarchicalOcclusionTraverser {
     }
 
     public void lateStageCompile(AbstractRenderPipeline pipeline) {
+        if (this.traversal != null) {
+            this.traversal.free();
+        }
         String taa = pipeline.taaFunction("getTAA");
         var scr = ShaderLoader.parse("voxy:lod/hierarchical/traversal_dev.comp");
         if (taa != null) {

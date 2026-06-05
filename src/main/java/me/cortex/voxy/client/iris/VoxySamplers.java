@@ -1,9 +1,12 @@
 package me.cortex.voxy.client.iris;
 
+import me.cortex.voxy.client.core.IGetVoxyRenderSystem;
+import me.cortex.voxy.client.core.IrisVoxyRenderPipeline;
 import net.irisshaders.iris.gl.sampler.GlSampler;
 import net.irisshaders.iris.gl.sampler.SamplerHolder;
 import net.irisshaders.iris.gl.texture.TextureType;
 import net.irisshaders.iris.pipeline.IrisRenderingPipeline;
+import net.minecraft.client.Minecraft;
 
 public class VoxySamplers {
     public static void addSamplers(IrisRenderingPipeline pipeline, SamplerHolder samplers) {
@@ -17,18 +20,20 @@ public class VoxySamplers {
                 translucentNames = new String[]{"vxDepthTexTrans", "dhDepthTex", "dhDepthTex0"};
             }*/
 
-            //TODO replace ()->0 with the actual depth texture id
+            //Access the current pipeline through the VoxyRenderSystem
             samplers.addDynamicSampler(TextureType.TEXTURE_2D, () -> {
-                var pipeData = ((IGetIrisVoxyPipelineData)pipeline).voxy$getPipelineData();
-                if (pipeData == null) {
+                var voxyRenderSystem = ((IGetVoxyRenderSystem) Minecraft.getInstance().levelRenderer).voxy$getRenderSystem();
+                if (voxyRenderSystem == null) {
                     return 0;
                 }
-                if (pipeData.thePipeline == null) {
+                
+                var currentPipeline = voxyRenderSystem.getPipeline();
+                if (currentPipeline == null || !(currentPipeline instanceof IrisVoxyRenderPipeline irisPipeline)) {
                     return 0;
                 }
 
-                //In theory the first frame could be null
-                var dt = pipeData.thePipeline.fb.getDepthTex();
+                //Get the depth texture from the current pipeline's framebuffer
+                var dt = irisPipeline.fb.getDepthTex();
                 if (dt == null) {
                     return 0;
                 }
@@ -36,15 +41,18 @@ public class VoxySamplers {
             }, new GlSampler(false, true, false, false), opaqueNames);
 
             samplers.addDynamicSampler(TextureType.TEXTURE_2D, () -> {
-                var pipeData = ((IGetIrisVoxyPipelineData)pipeline).voxy$getPipelineData();
-                if (pipeData == null) {
+                var voxyRenderSystem = ((IGetVoxyRenderSystem) Minecraft.getInstance().levelRenderer).voxy$getRenderSystem();
+                if (voxyRenderSystem == null) {
                     return 0;
                 }
-                if (pipeData.thePipeline == null) {
+                
+                var currentPipeline = voxyRenderSystem.getPipeline();
+                if (currentPipeline == null || !(currentPipeline instanceof IrisVoxyRenderPipeline irisPipeline)) {
                     return 0;
                 }
-                //In theory the first frame could be null
-                var dt = pipeData.thePipeline.fbTranslucent.getDepthTex();
+
+                //Get the depth texture from the current pipeline's translucent framebuffer
+                var dt = irisPipeline.fbTranslucent.getDepthTex();
                 if (dt == null) {
                     return 0;
                 }

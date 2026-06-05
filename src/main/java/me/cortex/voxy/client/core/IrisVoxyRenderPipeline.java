@@ -35,10 +35,6 @@ public class IrisVoxyRenderPipeline extends AbstractRenderPipeline {
     public IrisVoxyRenderPipeline(IrisVoxyRenderPipelineData data, AsyncNodeManager nodeManager, NodeCleaner nodeCleaner, HierarchicalOcclusionTraverser traversal, BooleanSupplier frexSupplier) {
         super(nodeManager, nodeCleaner, traversal, frexSupplier, data.shouldDeferTranslucency());
         this.data = data;
-        if (this.data.thePipeline != null) {
-            throw new IllegalStateException("Pipeline data already bound");
-        }
-        this.data.thePipeline = this;
 
         //Bind the drawbuffers
         var oDT = this.data.opaqueDrawTargets;
@@ -80,10 +76,6 @@ public class IrisVoxyRenderPipeline extends AbstractRenderPipeline {
 
     @Override
     public void free() {
-        if (this.data.thePipeline != this) {
-            throw new IllegalStateException();
-        }
-        this.data.thePipeline = null;
 
         this.depthBlit.delete();
         this.fbTranslucent.free();

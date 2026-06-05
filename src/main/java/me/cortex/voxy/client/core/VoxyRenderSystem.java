@@ -33,6 +33,8 @@ import me.cortex.voxy.common.thread.ServiceManager;
 import me.cortex.voxy.common.world.WorldEngine;
 import me.cortex.voxy.commonImpl.VoxyCommon;
 import net.caffeinemc.mods.sodium.client.render.chunk.ChunkRenderMatrices;
+import net.irisshaders.iris.Iris;
+import net.irisshaders.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.joml.Matrix4f;
@@ -68,11 +70,20 @@ public class VoxyRenderSystem {
 
 
     private final RenderDistanceTracker renderDistanceTracker;
-    public final ChunkBoundRenderer chunkBoundRenderer;
+    public ChunkBoundRenderer chunkBoundRenderer;
 
-    private final ViewportSelector<?> viewportSelector;
+    private ViewportSelector<?> viewportSelector;
 
-    private final AbstractRenderPipeline pipeline;
+    private AbstractRenderPipeline pipeline;
+
+    private WorldRenderingPipeline lastIrisPipeline;
+    
+    private final Object pipelineLock = new Object();
+
+    private boolean pipelineUpdatePending = false;
+    private ViewportSelector<?> pendingViewportSelector;
+    private ChunkBoundRenderer pendingChunkBoundRenderer;
+    private AbstractRenderPipeline oldPipelinePendingFree;
 
     // Fog parameters captured before modification by MixinFogRenderer, for Voxy's own fog pass
     private float capturedFogStart;
@@ -236,10 +247,75 @@ public class VoxyRenderSystem {
         return viewport;
     }
 
+    private void setupNewPipeline() {
+        this.oldPipelinePendingFree = this.pipeline;
+
+        this.pipeline = RenderPipelineFactory.createPipeline(this.nodeManager, this.nodeCleaner, this.traversal, this::frexStillHasWork);
+        this.pipeline.setupExtraModelBakeryData(this.modelService);
+
+        var backendFactory = getRenderBackendFactory();
+        var sectionRenderer = backendFactory.create(this.pipeline, this.modelService.getStore(), this.geometryData);
+        this.pipeline.setSectionRenderer(sectionRenderer);
+
+        this.pendingViewportSelector = new ViewportSelector<>(sectionRenderer::createViewport);
+        this.pendingChunkBoundRenderer = new ChunkBoundRenderer(this.pipeline);
+        this.pipelineUpdatePending = true;
+
+        this.traversal.lateStageCompile(this.pipeline);
+    }
+
+    private boolean checkAndUpdatePipeline() {
+        if (!IrisUtil.IRIS_INSTALLED || !IrisUtil.SHADER_SUPPORT) {
+            return false;
+        }
+        
+        synchronized (pipelineLock) {
+            WorldRenderingPipeline currentIrisPipeline = Iris.getPipelineManager().getPipelineNullable();
+            
+            if (currentIrisPipeline != lastIrisPipeline) {
+                Logger.info("Iris pipeline changed, updating Voxy pipeline");
+
+                try {
+                    setupNewPipeline();
+                    lastIrisPipeline = currentIrisPipeline;
+                    Logger.info("Voxy pipeline updated successfully (viewport swap deferred)");
+                    return true;
+                } catch (Exception e) {
+                    Logger.error("Failed to create new pipeline during update", e);
+                }
+            }
+        }
+        return false;
+    }
+
+    private void commitDeferredPipelineUpdate() {
+        if (!this.pipelineUpdatePending) return;
+        this.pipelineUpdatePending = false;
+        
+        if (this.pendingViewportSelector != null) {
+            this.viewportSelector.free();
+            this.viewportSelector = this.pendingViewportSelector;
+            this.pendingViewportSelector = null;
+        }
+        
+        if (this.pendingChunkBoundRenderer != null) {
+            this.chunkBoundRenderer.free();
+            this.chunkBoundRenderer = this.pendingChunkBoundRenderer;
+            this.pendingChunkBoundRenderer = null;
+        }
+        
+        if (this.oldPipelinePendingFree != null) {
+            this.oldPipelinePendingFree.free();
+            this.oldPipelinePendingFree = null;
+        }
+    }
+
     public void renderOpaque(Viewport<?> viewport) {
         if (viewport == null) {
             return;
         }
+
+        checkAndUpdatePipeline();
         if (viewport.width <= 0 || viewport.height <= 0) {
             return;//Only render on valid viewport
         }
@@ -461,6 +537,7 @@ public class VoxyRenderSystem {
         if (IrisUtil.irisShadowActive()) {
             return null;
         }
+        commitDeferredPipelineUpdate();
         return this.viewportSelector.getViewport();
     }
 
@@ -499,16 +576,31 @@ public class VoxyRenderSystem {
             this.traversal.free();
             this.nodeCleaner.free();
             this.geometryData.free();
-            if (((BasicSectionGeometryData)this.geometryData).isExternalGeometryBuffer) {
+                if (((BasicSectionGeometryData)this.geometryData).isExternalGeometryBuffer) {
                 RenderResourceReuse.giveBackGeometryBuffer(((BasicSectionGeometryData)this.geometryData).getGeometryBuffer());
             }
 
             this.chunkBoundRenderer.free();
 
-            this.viewportSelector.free();
+                this.viewportSelector.free();
         } catch (Exception e) {Logger.error("Error shutting down renderer components", e);}
+
+        if (this.pendingViewportSelector != null) {
+            this.pendingViewportSelector.free();
+            this.pendingViewportSelector = null;
+        }
+        if (this.pendingChunkBoundRenderer != null) {
+            this.pendingChunkBoundRenderer.free();
+            this.pendingChunkBoundRenderer = null;
+        }
+
+        if (this.oldPipelinePendingFree != null) {
+            this.oldPipelinePendingFree.free();
+            this.oldPipelinePendingFree = null;
+        }
+
         Logger.info("Shutting down render pipeline");
-        try {this.pipeline.free();} catch (Exception e){Logger.error("Error releasing render pipeline", e);}
+        try {if (this.pipeline != null) this.pipeline.free();} catch (Exception e){Logger.error("Error releasing render pipeline", e);}
 
 
 
@@ -522,5 +614,9 @@ public class VoxyRenderSystem {
 
     public WorldEngine getEngine() {
         return this.worldIn;
+    }
+
+    public AbstractRenderPipeline getPipeline() {
+        return this.pipeline;
     }
 }
