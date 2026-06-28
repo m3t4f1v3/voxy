@@ -7,19 +7,13 @@ import me.cortex.voxy.client.mixin.sodium.AccessorSodiumWorldRenderer;
 import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.common.StorageConfigUtil;
 import me.cortex.voxy.common.config.ConfigBuildCtx;
-import me.cortex.voxy.common.config.Serialization;
-import me.cortex.voxy.common.config.compressors.ZSTDCompressor;
-import me.cortex.voxy.common.config.section.SectionSerializationStorage;
 import me.cortex.voxy.common.config.section.SectionStorage;
 import me.cortex.voxy.common.config.section.SectionStorageConfig;
-import me.cortex.voxy.common.config.storage.other.CompressionStorageAdaptor;
-import me.cortex.voxy.common.config.storage.rocksdb.RocksDBStorageBackend;
 import me.cortex.voxy.commonImpl.ImportManager;
 import me.cortex.voxy.commonImpl.VoxyInstance;
 import me.cortex.voxy.commonImpl.WorldIdentifier;
 import me.jellysquid.mods.sodium.client.render.SodiumWorldRenderer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.level.storage.LevelResource;
 import java.nio.file.Path;
 
 public class VoxyClientInstance extends VoxyInstance {
@@ -99,29 +93,14 @@ public class VoxyClientInstance extends VoxyInstance {
     }
 
     private static Path getBasePath() {
-        Path basePath = Minecraft.getInstance().gameDirectory.toPath().resolve(".voxy").resolve("saves");
-        var iserver = Minecraft.getInstance().getSingleplayerServer();
-        if (iserver != null) {
-            basePath = iserver.getWorldPath(LevelResource.ROOT).resolve("voxy");
-        } else {
-            var netHandle = Minecraft.getInstance().gameMode;
-            if (netHandle == null) {
-                Logger.error("Network handle null");
-                basePath = basePath.resolve("UNKNOWN");
-            } else {
-                var info = netHandle.connection.getServerData();
-                if (info == null) {
-                    Logger.error("Server info null");
-                    basePath = basePath.resolve("UNKNOWN");
-                } else {
-                    if (Minecraft.getInstance().isConnectedToRealms()) {
-                        basePath = basePath.resolve("realms");
-                    } else {
-                        basePath = basePath.resolve(info.ip.replace(":", "_"));
-                    }
-                }
-            }
+        // The base path is pre-computed by MixinClientPacketListener at handleLogin time,
+        // when all Minecraft APIs (getSingleplayerServer, getServerData) are available.
+        var cached = ClientSessionEvents.getCachedBasePath();
+        if (cached != null) {
+            return cached.toAbsolutePath();
         }
-        return basePath.toAbsolutePath();
+        // Fallback: should not normally happen
+        Logger.error("Cached base path not available, using UNKNOWN");
+        return Minecraft.getInstance().gameDirectory.toPath().resolve(".voxy").resolve("saves").resolve("UNKNOWN").toAbsolutePath();
     }
 }
