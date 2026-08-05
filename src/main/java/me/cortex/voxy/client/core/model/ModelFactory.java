@@ -64,6 +64,16 @@ import static org.lwjgl.opengl.GL11.*;
 // this _quarters_ the memory requirements for the texture atlas!!! WHICH IS HUGE saving
 public class ModelFactory {
     public static final int MODEL_TEXTURE_SIZE = 16;
+
+    // Position-aware biome tint compatibility mode.
+    // Biome-tinted LOD models share one fixed 512-entry RGB333 palette.
+    // RenderDataFactory writes the palette index produced from BlockColors
+    // at the actual LOD sample world position into the quad biome-id bits.
+    public static final boolean USE_POSITION_TINT_PALETTE = true;
+    public static final int POSITION_TINT_PALETTE_SIZE = 512;
+    public static final int POSITION_TINT_PALETTE_INDEX = 0;
+    public static final int POSITION_TINT_FALLBACK_INDEX = POSITION_TINT_PALETTE_SIZE - 1;
+
     public static final int LAYERS = Integer.numberOfTrailingZeros(MODEL_TEXTURE_SIZE);
 
     //TODO: replace the fluid BlockState with a client model id integer of the fluidState, requires looking up
@@ -130,6 +140,8 @@ public class ModelFactory {
     private final ConcurrentLinkedDeque<BlockBake> bakeQueue = new ConcurrentLinkedDeque<>();
 
     private final ConcurrentLinkedDeque<ResultUploader> uploadResults = new ConcurrentLinkedDeque<>();
+
+    private boolean positionTintPaletteUploaded = false;
 
     private Object2IntMap<BlockState> customBlockStateIdMapping;
 
@@ -649,6 +661,12 @@ public class ModelFactory {
             MemoryUtil.memPutInt(uploadPtr, -1);//Set the default to nothing so that its faster on the gpu
         } else if (!isBiomeColourDependent) {
             MemoryUtil.memPutInt(uploadPtr, entry.tintingColour);
+        } else if (USE_POSITION_TINT_PALETTE) {
+            // Position-aware tinting mode: use the quad biome-id bits as an RGB333 palette index.
+            // All tinted models point at the same shared palette; RenderDataFactory computes
+            // the per-quad palette index from the actual LOD sample world position.
+            MemoryUtil.memPutInt(uploadPtr, POSITION_TINT_PALETTE_INDEX);
+            this.queuePositionTintPaletteUpload(uploadResult);
         } else {
             //Populate the list of biomes for the model state
             int biomeIndex = this.modelsRequiringBiomeColours.size() * this.biomes.size();
@@ -730,6 +748,63 @@ public class ModelFactory {
         return Math.clamp(state.getLightEmission(),0,15);
     }
 
+    private void queuePositionTintPaletteUpload(ModelBakeResultUpload uploadResult) {
+        if (this.positionTintPaletteUploaded) {
+            return;
+        }
+        this.positionTintPaletteUploaded = true;
+        uploadResult.biomeUploadIndex = POSITION_TINT_PALETTE_INDEX;
+        long clrUploadPtr = (uploadResult.biomeUpload = new MemoryBuffer(4L * POSITION_TINT_PALETTE_SIZE)).address;
+        writePositionTintPalette(clrUploadPtr);
+    }
+
+    private static void writePositionTintPalette(long ptr) {
+        for (int i = 0; i < POSITION_TINT_PALETTE_SIZE; i++) {
+            MemoryUtil.memPutInt(ptr + i * 4L, positionTintPaletteColour(i) | 0xFF000000);
+        }
+    }
+
+    private static int positionTintPaletteColour(int index) {
+        int r = (index >> 6) & 7;
+        int g = (index >> 3) & 7;
+        int b = index & 7;
+        return ((r * 255 / 7) << 16) | ((g * 255 / 7) << 8) | (b * 255 / 7);
+    }
+
+    public int getPositionTintPaletteIndex(int blockId, BlockPos pos) {
+        if (!USE_POSITION_TINT_PALETTE) {
+            return -1;
+        }
+        var level = Minecraft.getInstance().level;
+        if (level == null) {
+            return POSITION_TINT_FALLBACK_INDEX;
+        }
+        BlockState state = this.mapper.getBlockStateFromBlockId(blockId);
+        int color;
+        try {
+            color = Minecraft.getInstance().getBlockColors().getColor(state, level, pos, 0);
+            if (color == -1) {
+                color = Minecraft.getInstance().getBlockColors().getColor(state, level, pos, 1);
+            }
+        } catch (Throwable throwable) {
+            return POSITION_TINT_FALLBACK_INDEX;
+        }
+        if (color == -1) {
+            return POSITION_TINT_FALLBACK_INDEX;
+        }
+        return quantizePositionTintColour(color);
+    }
+
+    private static int quantizePositionTintColour(int color) {
+        int r = (color >> 16) & 255;
+        int g = (color >> 8) & 255;
+        int b = color & 255;
+        int r3 = (r * 7 + 127) / 255;
+        int g3 = (g * 7 + 127) / 255;
+        int b3 = (b * 7 + 127) / 255;
+        return (r3 << 6) | (g3 << 3) | b3;
+    }
+
     private static final class BiomeUploadResult implements ResultUploader {
         private final MemoryBuffer biomeColourBuffer;
         private final MemoryBuffer modelBiomeIndexPairs;
@@ -780,6 +855,10 @@ public class ModelFactory {
             Logger.error("Biome added was a duplicate: " + id);
             return null;
         }
+
+        // In position-tint-palette mode, biome-coloured model LUTs are fixed RGB333 palettes.
+        // New biome registrations do not require rebuilding/reuploading those model colour LUTs.
+        if (USE_POSITION_TINT_PALETTE) return null;
 
         if (this.modelsRequiringBiomeColours.isEmpty()) return null;
 
