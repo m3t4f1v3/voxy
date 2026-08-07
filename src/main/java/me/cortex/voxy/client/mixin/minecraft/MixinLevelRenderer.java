@@ -9,6 +9,7 @@ import me.cortex.voxy.common.Logger;
 import me.cortex.voxy.common.world.WorldEngine;
 import me.cortex.voxy.commonImpl.VoxyCommon;
 import me.cortex.voxy.commonImpl.WorldIdentifier;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
 import org.jetbrains.annotations.Nullable;
@@ -33,7 +34,16 @@ public abstract class MixinLevelRenderer implements IGetVoxyRenderSystem {
     private void voxy$reloadVoxyRenderer(CallbackInfo ci) {
         this.voxy$shutdownRenderer();
         if (this.level != null) {
-            this.voxy$createRenderer();
+            //Defer the actual (heavy, GL-bound) creation by one loop iteration instead of running it
+            // synchronously here. allChanged() runs inside the network packet handling call stack
+            // (ClientPacketListener#handleLogin), so blocking here delays that packet handler from
+            // returning and stalls processing of any other packets queued behind it.
+            var scheduledLevel = this.level;
+            Minecraft.getInstance().execute(() -> {
+                if (this.level == scheduledLevel && this.renderer == null) {
+                    this.voxy$createRenderer();
+                }
+            });
         }
     }
 
