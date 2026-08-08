@@ -55,6 +55,21 @@ public class ExpandingObjectAllocationList<T> {
         return this.objects[index];
     }
 
+    /**
+     * bounds- and allocation-safe lookup. Returns null instead of throwing
+     * when the id is out of range or has already been released, so callers can safely
+     * probe a possibly-stale id while repairing state.
+     */
+    public T getOrNull(int index) {
+        if (index < 0 || index >= this.objects.length) {
+            return null;
+        }
+        if (!this.bitSet.isSet(index)) {
+            return null;
+        }
+        return this.objects[index];
+    }
+
     public int count() {
         return this.bitSet.getCount();
     }

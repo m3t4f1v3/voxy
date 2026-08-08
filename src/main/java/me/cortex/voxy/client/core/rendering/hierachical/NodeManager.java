@@ -1129,13 +1129,23 @@ public class NodeManager {
 
             //Check if the node is already in-flight, if it is, dont do any processing
             if (this.nodeData.isNodeRequestInFlight(nodeId)) {
-                Logger.warn("Tried processing a node that already has a request in flight: " + nodeId + " pos: " + WorldEngine.pprintPos(pos) + " ignoring");
-                return;
+                if (this.hasLiveChildRequest(nodeId, pos)) {
+                    //Genuinely still waiting on a result, it will arrive via finishRequest
+                    return;
+                }
+                //marked in-flight with no live request behind it. Returning
+                // here (the old behaviour) stranded the node permanently - it was never
+                // re-requested, so its subtree stayed without geometry and showed up as a
+                // blank/black region in the LODs until the node state was rebuilt.
+                // Repair it and fall through to re-issue the request.
+                Logger.warn("Node " + nodeId + " at " + WorldEngine.pprintPos(pos) +
+                        " was marked in-flight with no live request, repairing and re-requesting");
+                this.clearStaleChildRequest(nodeId, pos);
             }
 
-            //Mark node as having an inflight request
-            this.nodeData.markRequestInFlight(nodeId);
-
+            //Note: the node is marked in-flight by makeLeafChildRequest, once the request
+            // actually exists (see NodeStore.setNodeRequest). Marking it up front used to
+            // leave the node marked with no request whenever request creation failed.
             //The hard one of processRequest, spin up a new request for the node
             this.makeLeafChildRequest(nodeId);
 
@@ -1143,6 +1153,85 @@ public class NodeManager {
             this.processInnerRequest(pos, nodeId);
         }
     }
+
+    //================= LOD request self-healing =========================
+    // A node is "in flight" exactly when it owns a live child request. These helpers let
+    // any code path check that cheaply and repair a node whose request has gone away,
+    // instead of leaving it stranded with no geometry forever.
+
+    /** True only if this node owns a request that is still allocated and sits at its position. */
+    private boolean hasLiveChildRequest(int nodeId, long pos) {
+        int reqId = this.nodeData.getNodeRequest(nodeId);
+        if (reqId == NULL_REQUEST_ID) {
+            return false;
+        }
+        var req = this.childRequests.getOrNull(reqId);
+        return req != null && req.getPosition() == pos;
+    }
+
+    /**
+     * Drops whatever a dead or stale child request left behind so the node can be
+     * requested again from scratch. Only removes tracking-map/watch entries that still
+     * point at this node's (stale) request id, so it is safe to call speculatively.
+     */
+    private void clearStaleChildRequest(int nodeId, long pos) {
+        int staleId = this.nodeData.getNodeRequest(nodeId);
+        if (staleId != NULL_REQUEST_ID) {
+            for (int i = 0; i < 8; i++) {
+                long childPos = makeChildPos(pos, i);
+                int cId = this.activeSectionMap.get(childPos);
+                if (cId == -1) continue;
+                if ((cId&NODE_TYPE_MSK) != NODE_TYPE_REQUEST) continue;
+                if ((cId&REQUEST_TYPE_MSK) != REQUEST_TYPE_CHILD) continue;
+                if ((cId&NODE_ID_MSK) != staleId) continue;
+                this.activeSectionMap.remove(childPos);
+                this.watcher.unwatch(childPos, WorldEngine.DEFAULT_UPDATE_FLAGS);
+            }
+            //If the request object itself is somehow still allocated, give the id back
+            if (this.childRequests.getOrNull(staleId) != null) {
+                this.childRequests.release(staleId);
+                this.activeNodeRequestCount--;
+            }
+        }
+        this.nodeData.unmarkRequestInFlight(nodeId);//Also clears the request id
+    }
+
+    //Watchdog: walks a bounded slice of the node table on each sweep so the cost stays
+    // flat regardless of world size. Any node marked in-flight without a live request
+    // behind it is repaired and re-requested, which guarantees no node can stay stuck
+    // without geometry even if a new race is introduced later.
+    private static final int STUCK_SWEEP_SLICE = 8192;
+    private int stuckSweepCursor = 0;
+
+    public void sweepStuckRequests() {
+        int end = this.nodeData.getEndNodeId();
+        if (end <= 0) {
+            this.stuckSweepCursor = 0;
+            return;
+        }
+        for (int n = 0; n < STUCK_SWEEP_SLICE; n++) {
+            if (this.stuckSweepCursor >= end) {
+                this.stuckSweepCursor = 0;
+            }
+            int node = this.stuckSweepCursor++;
+            if (!this.nodeData.nodeExists(node)) continue;
+            if (!this.nodeData.isNodeRequestInFlight(node)) continue;
+            long pos = this.nodeData.nodePosition(node);
+            if (pos == -1) continue;
+            if (this.hasLiveChildRequest(node, pos)) continue;
+
+            Logger.warn("Watchdog: node " + node + " at " + WorldEngine.pprintPos(pos) +
+                    " was stuck in-flight with no live request, repairing and re-requesting");
+            this.clearStaleChildRequest(node, pos);
+            this.invalidateNode(node);
+            try {
+                this.processRequest(pos);//Re-issue so the subtree actually gets geometry
+            } catch (Throwable t) {
+                Logger.error("Watchdog failed to re-request " + WorldEngine.pprintPos(pos), t);
+            }
+        }
+    }
+    //==================================================================================
 
     private void makeLeafChildRequest(int nodeId) {
         long pos = this.nodeData.nodePosition(nodeId);
@@ -1161,33 +1250,71 @@ public class NodeManager {
         var request = new NodeChildRequest(pos);
         int requestId = this.childRequests.put(request);
 
-        //Only request against the childExistence mask, since the guarantee is that if childExistence bit is not set then that child is guaranteed to be empty
-        for (int i = 0; i < 8; i++) {
-            if ((childExistence&(1<<i))==0) {
-                //Dont watch or enqueue the child node cause it doesnt exist
-                continue;
-            }
-            long childPos = makeChildPos(pos, i);
-            request.addChildRequirement(i);
-
-            //Insert all the children into the tracking map with the node id
-            int pid = this.activeSectionMap.put(childPos, requestId|NODE_TYPE_REQUEST|REQUEST_TYPE_CHILD);
-
-            if (pid != -1) {
-                String extra = "";
-                if ((pid&NODE_TYPE_MSK)==NODE_TYPE_LEAF) {
-                    extra = " type leaf: pos " + WorldEngine.pprintPos( this.nodeData.nodePosition(pid)) + " hasRequest: " + this.nodeData.isNodeRequestInFlight(pid);
+        //build the request transactionally.
+        // A failure part way through this loop used to propagate out with the node already
+        // marked in-flight and setNodeRequest never reached, so the node ended up marked
+        // as having a request that did not exist. Every later request for it was then
+        // dropped and its subtree never got geometry. It also killed the node manager
+        // thread. Now any failure unwinds every map entry and watch this call made,
+        // releases the request id and leaves the node clean so it is simply retried.
+        int mappedMsk = 0;
+        int watchedMsk = 0;
+        boolean built = false;
+        try {
+            //Only request against the childExistence mask, since the guarantee is that if childExistence bit is not set then that child is guaranteed to be empty
+            for (int i = 0; i < 8; i++) {
+                if ((childExistence&(1<<i))==0) {
+                    //Dont watch or enqueue the child node cause it doesnt exist
+                    continue;
                 }
-                throw new IllegalStateException("Leaf request creation failed to insert child into map as a mapping already existed for the node! pos: " + WorldEngine.pprintPos(childPos) + " id: " + pid + " for parent " + WorldEngine.pprintPos(pos) + " extra " + extra);
-            }
+                long childPos = makeChildPos(pos, i);
+                request.addChildRequirement(i);
 
-            //Watch and request the child node at the given position
-            if (!this.watcher.watch(childPos, WorldEngine.DEFAULT_UPDATE_FLAGS)) {
-                throw new IllegalStateException("Failed to watch childPos");
+                //Insert all the children into the tracking map with the node id
+                int pid = this.activeSectionMap.put(childPos, requestId|NODE_TYPE_REQUEST|REQUEST_TYPE_CHILD);
+
+                if (pid != -1) {
+                    //put() has already overwritten the existing mapping, restore it before unwinding
+                    this.activeSectionMap.put(childPos, pid);
+                    String extra = "";
+                    if ((pid&NODE_TYPE_MSK)==NODE_TYPE_LEAF) {
+                        extra = " type leaf: pos " + WorldEngine.pprintPos( this.nodeData.nodePosition(pid)) + " hasRequest: " + this.nodeData.isNodeRequestInFlight(pid);
+                    }
+                    throw new IllegalStateException("Leaf request creation failed to insert child into map as a mapping already existed for the node! pos: " + WorldEngine.pprintPos(childPos) + " id: " + pid + " for parent " + WorldEngine.pprintPos(pos) + " extra " + extra);
+                }
+                mappedMsk |= 1<<i;
+
+                //Watch and request the child node at the given position
+                if (!this.watcher.watch(childPos, WorldEngine.DEFAULT_UPDATE_FLAGS)) {
+                    throw new IllegalStateException("Failed to watch childPos");
+                }
+                watchedMsk |= 1<<i;
             }
+            built = true;
+        } catch (Throwable t) {
+            Logger.error("Failed to create leaf child request at " + WorldEngine.pprintPos(pos) +
+                    ", rolling back so the node can be retried", t);
         }
 
-        this.nodeData.setNodeRequest(nodeId, requestId);
+        if (!built) {
+            //Unwind everything this call acquired
+            for (int i = 0; i < 8; i++) {
+                long childPos = makeChildPos(pos, i);
+                if ((watchedMsk&(1<<i))!=0) {
+                    this.watcher.unwatch(childPos, WorldEngine.DEFAULT_UPDATE_FLAGS);
+                }
+                if ((mappedMsk&(1<<i))!=0) {
+                    this.activeSectionMap.remove(childPos);
+                }
+            }
+            this.childRequests.release(requestId);
+            //Leave the node with no request at all so it gets retried rather than stranded
+            this.nodeData.unmarkRequestInFlight(nodeId);
+            this.invalidateNode(nodeId);
+            return;
+        }
+
+        this.nodeData.setNodeRequest(nodeId, requestId);//This is also what marks the node in-flight
         this.activeNodeRequestCount++;
     }
 
@@ -1503,8 +1630,15 @@ public class NodeManager {
             if (this.nodeData.nodePosition(node) != pos) {
                 throw new IllegalStateException();
             }
-            if ((this.nodeData.getNodeRequest(node) != NULL_REQUEST_ID) != this.nodeData.isNodeRequestInFlight(node)) {
-                throw new IllegalStateException();
+            //in-flight is now derived from the request id, so the old
+            // "flag disagrees with request id" desync cannot be represented any more.
+            // What can still happen is the id pointing at a released or foreign request,
+            // so check for that and repair rather than killing the node manager thread
+            // (an exception here takes down LOD rendering entirely).
+            if (this.nodeData.isNodeRequestInFlight(node) && !this.hasLiveChildRequest(node, pos)) {
+                Logger.warn("verifyNode: node " + node + " at " + WorldEngine.pprintPos(pos) +
+                        " had a stale request, repairing");
+                this.clearStaleChildRequest(node, pos);
             }
             if (this.nodeData.isNodeRequestInFlight(node)) {
                 var req = this.childRequests.get(this.nodeData.getNodeRequest(node));
