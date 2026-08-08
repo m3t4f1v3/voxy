@@ -184,20 +184,38 @@ public final class NodeStore {
         data &= ~(Integer.toUnsignedLong(REQUEST_ID_MSK));
         data |= requestId;
         this.localNodeData[id] = data;
+
+        //the request id is the single source of truth for "has a request in
+        // flight". Bit 63 of word +1 is kept as an exact mirror of it purely so that any
+        // code (and the GPU node encoding in writeNode) keeps seeing a consistent flag.
+        // Previously the bit was maintained independently of the id and the two could
+        // drift apart permanently, which stranded nodes with no geometry.
+        int flagIdx = id2idx(node)+1;
+        if (requestId == REQUEST_ID_MSK) {
+            this.localNodeData[flagIdx] &= ~(1L<<63);
+        } else {
+            this.localNodeData[flagIdx] |= 1L<<63;
+        }
     }
 
     public int getNodeRequest(int node) {
         return (int) (this.localNodeData[id2idx(node)+2]&REQUEST_ID_MSK);
     }
 
+    //no-op. A node counts as in-flight exactly when it owns a request id,
+    // so the marking happens in setNodeRequest once the request actually exists. Callers
+    // that used to mark up front are left intact but no longer create a half-state.
     public void markRequestInFlight(int nodeId) {
-        this.localNodeData[id2idx(nodeId)+1] |= 1L<<63;
     }
+
+    //Clears the request id (and therefore the in-flight state) in one atomic step, so the
+    // two can never be cleared independently of one another.
     public void unmarkRequestInFlight(int nodeId) {
-        this.localNodeData[id2idx(nodeId)+1] &= ~(1L<<63);
+        this.setNodeRequest(nodeId, REQUEST_ID_MSK);
     }
+
     public boolean isNodeRequestInFlight(int nodeId) {
-        return ((this.localNodeData[id2idx(nodeId)+1]>>63)&1)!=0;
+        return this.getNodeRequest(nodeId) != REQUEST_ID_MSK;
     }
 
     //TODO: Implement this in node manager

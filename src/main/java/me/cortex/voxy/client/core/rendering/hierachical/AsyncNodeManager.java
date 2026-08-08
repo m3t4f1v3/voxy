@@ -65,6 +65,8 @@ public class AsyncNodeManager {
     private final long geometryCapacity;
     private volatile boolean running = true;
     private volatile Throwable uncaughtException;
+    //last time the stuck-request watchdog swept (see run()).
+    private long lastStuckSweepNanos = System.nanoTime();
 
     private final NodeManager manager;
     private final BasicAsyncGeometryManager geometryManager;
@@ -212,6 +214,20 @@ public class AsyncNodeManager {
 
 
         int workDone = 0;
+
+        //LOD request watchdog. Runs a bounded slice of the node table every
+        // couple of seconds on this (the node manager) thread and repairs any node left
+        // marked as having a request in flight without a live request behind it. Without
+        // it such a node is never re-requested and its subtree stays without geometry,
+        // which showed up in game as a permanent blank/black region in the LODs that only
+        // a reload cleared.
+        {
+            long nowNanos = System.nanoTime();
+            if (nowNanos - this.lastStuckSweepNanos > 2_000_000_000L) {
+                this.lastStuckSweepNanos = nowNanos;
+                this.manager.sweepStuckRequests();
+            }
+        }
 
         {
             LongOpenHashSet add = null;
