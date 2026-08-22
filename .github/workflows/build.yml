@@ -1,0 +1,43 @@
+name: Build Voxy (MC 1.21.1 Sodium 0.8.12)
+
+on:
+  push:
+    branches:
+      - mc_1211-sodium0.8.12
+  pull_request:
+    branches:
+      - mc_1211-sodium0.8.12
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+
+      - name: Build
+        run: ./gradlew build --no-daemon
+
+      - name: Upload Mod Jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: voxy-mc1.21.1-sodium0.8.12
+          path: |
+            build/libs/*.jar
+            !build/libs/*-sources.jar
+            !build/libs/*-javadoc.jar
