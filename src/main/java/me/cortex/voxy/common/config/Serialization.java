@@ -170,6 +170,9 @@ public class Serialization {
         try {
             InputStream stream = Serialization.class.getClassLoader()
                     .getResourceAsStream(pack.replaceAll("[.]", "/"));
+            if (stream == null) {
+                return List.of();//Classloader cant list directories (e.g. forge jars), the mod root path scan covers it
+            }
             BufferedReader reader = new BufferedReader(new InputStreamReader(stream));
             return reader.lines().flatMap(inner -> {
                 if (inner.endsWith(".class")) {

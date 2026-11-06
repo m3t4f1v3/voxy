@@ -20,7 +20,10 @@ public class ClientVoxyMixinPlugin implements IMixinConfigPlugin {
     }
 
     @Override
-    public boolean shouldApplyMixin(String targetClassName, String mixinClassName) { return true; }
+    public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        //Skip the nvidium hook when nvidium isnt installed (always on forge), avoids a "target not found" warning every launch
+        return nvidiumInstalled || !mixinClassName.endsWith("nvidium.MixinRenderPipeline");
+    }
 
     @Override public List<String> getMixins() {
         List<String> mixins = new ArrayList<>();

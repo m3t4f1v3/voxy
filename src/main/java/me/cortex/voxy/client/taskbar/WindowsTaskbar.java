@@ -62,6 +62,6 @@ public class WindowsTaskbar extends COMInvoker implements Taskbar.ITaskbar {
 
     @Override
     public void setIsError() {
-        this.invokeNative(10, this.hwnd, 2); // SetProgressState TBPF_ERROR (0x00000004)
+        this.invokeNative(10, this.hwnd, 4); // SetProgressState TBPF_ERROR (0x00000004)
     }
 }
