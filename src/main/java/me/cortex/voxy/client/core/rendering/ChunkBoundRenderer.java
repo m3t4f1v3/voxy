@@ -82,17 +82,13 @@ public class ChunkBoundRenderer {
     //Bind and render, changing as little gl state as possible so that the caller may configure how it wants to render
     public void render(Viewport<?> viewport) {
         if (!this.remQueue.isEmpty()) {
-            boolean wasEmpty = this.chunk2idx.isEmpty();
             this.remQueue.forEach(this::_remPos);//TODO: REPLACE WITH SCATTER COMPUTE
             this.remQueue.clear();
-            if (this.chunk2idx.isEmpty()&&!wasEmpty) {//When going from stuff to nothing need to clear the depth buffer
-                viewport.depthBoundingBuffer.clear(this.properties.inverseClearDepth());
-            }
         }
 
-        if (this.chunk2idx.isEmpty() && this.addQueue.isEmpty()) return;
-
+        //Always clear, also covers going from stuff to nothing and reset() leaving stale bounds behind
         viewport.depthBoundingBuffer.clear(this.properties.inverseClearDepth());
+        if (this.chunk2idx.isEmpty() && this.addQueue.isEmpty()) return;
 
         long ptr = UploadStream.INSTANCE.upload(this.uniformBuffer, 0, 128);
         long matPtr = ptr; ptr += 4*4*4;
@@ -157,6 +153,8 @@ public class ChunkBoundRenderer {
         }
 
 
+        //Adds are applied after drawing so new bounds only take effect next frame: Sodium/Embeddium can upload
+        // sections after it built this frame's render lists, hiding LODs a frame early shows holes
         if (!this.addQueue.isEmpty()) {
             this.addQueue.forEach(this::_addPos);//TODO: REPLACE WITH SCATTER COMPUTE
             this.addQueue.clear();
@@ -231,6 +229,9 @@ public class ChunkBoundRenderer {
 
     public void reset() {
         this.chunk2idx.clear();
+        //Queued changes belong to the old section manager, applying them would leave bounds for chunks that no longer render
+        this.addQueue.clear();
+        this.remQueue.clear();
     }
 
     public void free() {
