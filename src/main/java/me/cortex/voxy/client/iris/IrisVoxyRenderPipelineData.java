@@ -417,6 +417,12 @@ public class IrisVoxyRenderPipelineData {
             uniforms.add(new UniformWritingHolder(entry.getKey().getName(), Type.convert(entry.getKey().getType()),offset->createWriter(offset, cachedReturn, entry.getKey())));
         });
 
+        //Packs made for newer Iris list endFlashIntensity (1.21.9+ end flashes), which older Iris/Oculus doesnt provide.
+        // End flashes dont exist on these versions so 0 is the correct value; only added if the pack asks and nothing else did
+        if (!seenUniforms.contains("endFlashIntensity")) {
+            uniformBuilder.uniform1f("endFlashIntensity", () -> 0f, null);
+        }
+
         if (uniforms.size() != patch.getUniformList().length) {
             Set<String> uniformsUnseen = new HashSet<>(List.of(patch.getUniformList()));
             for (var uniform : uniforms) {
