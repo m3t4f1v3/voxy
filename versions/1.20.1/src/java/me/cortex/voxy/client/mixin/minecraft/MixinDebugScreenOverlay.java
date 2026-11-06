@@ -24,11 +24,13 @@ public abstract class MixinDebugScreenOverlay {
 
         if (!VoxyCommon.isAvailable()) {
             voxyLines.add(ChatFormatting.RED + "voxy-"+VoxyCommon.MOD_VERSION);//Voxy installed, not avalible
+            info.getReturnValue().addAll(voxyLines);
             return;
         }
         var instance = VoxyCommon.getInstance();
         if (instance == null) {
             voxyLines.add(ChatFormatting.YELLOW + "voxy-" + VoxyCommon.MOD_VERSION);//Voxy avalible, no instance active
+            info.getReturnValue().addAll(voxyLines);
             return;
         }
         VoxyRenderSystem vrs = null;

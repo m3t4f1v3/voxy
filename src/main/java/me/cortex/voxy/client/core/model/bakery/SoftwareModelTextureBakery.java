@@ -231,7 +231,22 @@ public class SoftwareModelTextureBakery {
             if (state.getBlock() instanceof LeavesBlock) {
                 blockRenderLayer = RenderType.solid();
             } else {
+                //? if forge {
+                //Forge models declare their own render type (model json "render_type"), the vanilla lookup only knows vanilla's map
+                var types = Minecraft.getInstance().getBlockRenderer().getBlockModel(state)
+                        .getRenderTypes(state, new SingleThreadedRandomSource(42L), net.minecraftforge.client.model.data.ModelData.EMPTY);
+                if (types.contains(RenderType.translucent())) {
+                    blockRenderLayer = RenderType.translucent();
+                } else if (types.contains(RenderType.cutout())) {
+                    blockRenderLayer = RenderType.cutout();
+                } else if (types.contains(RenderType.cutoutMipped())) {
+                    blockRenderLayer = RenderType.cutoutMipped();
+                } else {
+                    blockRenderLayer = RenderType.solid();
+                }
+                //?} else {
                 blockRenderLayer = ItemBlockRenderTypes.getChunkRenderType(state);
+                //?}
             }
         }
 

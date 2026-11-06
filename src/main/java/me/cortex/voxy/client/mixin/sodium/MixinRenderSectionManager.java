@@ -158,11 +158,39 @@ public class MixinRenderSectionManager {
 
                     var csp = SectionPos.of(x, y, z);
                     var blp = lp.getLayerListener(LightLayer.BLOCK).getDataLayerData(csp);
-                    var slp = lp.getLayerListener(LightLayer.SKY).getDataLayerData(csp);
+                    var slp = VoxelIngestService.skyLightOrFull(this.level, lp.getLayerListener(LightLayer.SKY).getDataLayerData(csp));
 
                     //Note: we dont do this check and just blindly ingest, it shouldbe ok :tm:
                     //if (blp != null || slp != null)
                     VoxelIngestService.rawIngest(system.getEngine(), section, x, y, z, blp == null ? null : blp.copy(), slp == null ? null : slp.copy());
+                }
+            }
+        }
+
+        // FIX: ingest newly explored chunks here, where Sodium has already compiled
+        // the geometry and lighting is guaranteed to be available. The onChunkAdded
+        // hook fires too early (before lighting arrives for freshly generated chunks).
+        // Done before the MiB offset below so the real chunk coords are used.
+        if (!wasBuilt && VoxyConfig.CONFIG.ingestEnabled) {
+            var tracker = ((AccessorChunkTracker)ChunkTrackerHolder.get(this.level)).getChunkStatus();
+            long key = ChunkPos.asLong(x, z);
+            if (key != this.cachedChunkPos) {
+                this.cachedChunkPos = key;
+                this.cachedChunkStatus = tracker.getOrDefault(key, 0);
+            }
+            // Status 3 = chunk has all surrounding neighbours loaded (LIGHT_AND_BIOMES),
+            // so lighting is complete and safe to read.
+            if (this.cachedChunkStatus == 3) {
+                var chunk = this.level.getChunkSource().getChunk(x, z, ChunkStatus.FULL, false);
+                if (chunk != null) {
+                    var section = chunk.getSection(y - this.bottomSectionY);
+                    var lp = this.level.getLightEngine();
+                    var csp = SectionPos.of(x, y, z);
+                    var blp = lp.getLayerListener(LightLayer.BLOCK).getDataLayerData(csp);
+                    var slp = VoxelIngestService.skyLightOrFull(this.level, lp.getLayerListener(LightLayer.SKY).getDataLayerData(csp));
+                    VoxelIngestService.rawIngest(system.getEngine(), section, x, y, z,
+                            blp == null ? null : blp.copy(),
+                            slp == null ? null : slp.copy());
                 }
             }
         }
@@ -180,30 +208,6 @@ public class MixinRenderSectionManager {
             system.chunkBoundRenderer.removeSection(pos);
         } else {//Add — chunk newly built for the first time
             system.chunkBoundRenderer.addSection(pos);
-
-            // FIX: ingest newly explored chunks here, where Sodium has already compiled
-            // the geometry and lighting is guaranteed to be available. The onChunkAdded
-            // hook fires too early (before lighting arrives for freshly generated chunks).
-            if (VoxyConfig.CONFIG.ingestEnabled) {
-                var tracker = ((AccessorChunkTracker)ChunkTrackerHolder.get(this.level)).getChunkStatus();
-                long key = ChunkPos.asLong(x, z);
-                if (key != this.cachedChunkPos) {
-                    this.cachedChunkPos = key;
-                    this.cachedChunkStatus = tracker.getOrDefault(key, 0);
-                }
-                // Status 3 = chunk has all surrounding neighbours loaded (LIGHT_AND_BIOMES),
-                // so lighting is complete and safe to read.
-                if (this.cachedChunkStatus == 3) {
-                    var section = this.level.getChunk(x, z).getSection(y - this.bottomSectionY);
-                    var lp = this.level.getLightEngine();
-                    var csp = SectionPos.of(x, y, z);
-                    var blp = lp.getLayerListener(LightLayer.BLOCK).getDataLayerData(csp);
-                    var slp = lp.getLayerListener(LightLayer.SKY).getDataLayerData(csp);
-                    VoxelIngestService.rawIngest(system.getEngine(), section, x, y, z,
-                            blp == null ? null : blp.copy(),
-                            slp == null ? null : slp.copy());
-                }
-            }
         }
         //? if 1.21.1 {
         return true;

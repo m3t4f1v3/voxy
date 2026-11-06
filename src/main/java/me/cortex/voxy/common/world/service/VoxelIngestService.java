@@ -58,8 +58,9 @@ public class VoxelIngestService {
         ILightingSupplier supplier = (x,y,z) -> (byte) 0;
         var sla = task.skyLight;
         var bla = task.blockLight;
-        boolean sl = sla != null && !sla.isEmpty();
-        boolean bl = bla != null && !bla.isEmpty();
+        //Dont check isEmpty(): a DataLayer with no array is homogeneous (e.g. full sky = 15), get() returns its default value
+        boolean sl = sla != null;
+        boolean bl = bla != null;
         if (sl || bl) {
             if (sl && bl) {
                 supplier = (x,y,z)-> {
@@ -82,6 +83,15 @@ public class VoxelIngestService {
             }
         }
         return supplier;
+    }
+
+    //Sections above the terrain store no sky data, the light engine treats them as fully lit
+    // Note: assumes null means "above terrain"; a not-yet-lit section would be stored bright until re-ingested
+    public static DataLayer skyLightOrFull(net.minecraft.world.level.Level level, DataLayer sky) {
+        if (sky == null && level.dimensionType().hasSkyLight()) {
+            return new DataLayer(15);
+        }
+        return sky;
     }
 
     private static boolean shouldIngestSection(LevelChunkSection section, int cx, int cy, int cz) {
@@ -151,7 +161,7 @@ public class VoxelIngestService {
                 bl = bl.copy();
             }
 
-            var sl = slp.getDataLayerData(pos);
+            var sl = skyLightOrFull(chunk.getLevel(), slp.getDataLayerData(pos));
             if (sl != null) {
                 sl = sl.copy();
             }

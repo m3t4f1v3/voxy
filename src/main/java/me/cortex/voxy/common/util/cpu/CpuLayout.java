@@ -181,7 +181,9 @@ public class CpuLayout {
 
     public static int getCoreCount() {
 //? if 1.20.1 {
-        return Runtime.getRuntime().availableProcessors();
+        //CORES (physical cores) isnt available here, availableProcessors is logical threads so halve it to match
+        // Note: assumes SMT (2 threads/core); a CPU without SMT gets half the default threads, still a safe default
+        return Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 //? } else {
         if (CORES==null) {
             return Runtime.getRuntime().availableProcessors();

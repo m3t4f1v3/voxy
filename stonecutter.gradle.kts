@@ -24,7 +24,7 @@ stonecutter {
                         spec.replace("NbtIo.readCompressed(new ByteArrayInputStream(data), NbtAccounter.unlimitedHeap())", "NbtIo.readCompressed(new ByteArrayInputStream(data))")
                         spec.replace("state.isError()", "state.error().isPresent()")
                         spec.replace("state.getOrThrow()", "state.getOrThrow(false, Logger::error)")
-                        spec.replace("blockStatesRes.getPartialOrThrow()", "blockStatesRes.getOrThrow(false, Logger::error)")
+                        spec.replace("blockStatesRes.getPartialOrThrow()", "blockStatesRes.getOrThrow(true, Logger::error)")
                         spec.replace("ZipFile.builder().setFile(zip).get()", "new ZipFile(zip)")
                         spec.replace("info.isRealm()", "Minecraft.getInstance().isConnectedToRealms()")
                         spec.replace("addVertex(", "vertex(")
