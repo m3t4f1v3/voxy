@@ -158,7 +158,7 @@ public class MixinRenderSectionManager {
 
                     var csp = SectionPos.of(x, y, z);
                     var blp = lp.getLayerListener(LightLayer.BLOCK).getDataLayerData(csp);
-                    var slp = lp.getLayerListener(LightLayer.SKY).getDataLayerData(csp);
+                    var slp = VoxelIngestService.skyLightOrFull(this.level, lp.getLayerListener(LightLayer.SKY).getDataLayerData(csp));
 
                     //Note: we dont do this check and just blindly ingest, it shouldbe ok :tm:
                     //if (blp != null || slp != null)
@@ -187,7 +187,7 @@ public class MixinRenderSectionManager {
                     var lp = this.level.getLightEngine();
                     var csp = SectionPos.of(x, y, z);
                     var blp = lp.getLayerListener(LightLayer.BLOCK).getDataLayerData(csp);
-                    var slp = lp.getLayerListener(LightLayer.SKY).getDataLayerData(csp);
+                    var slp = VoxelIngestService.skyLightOrFull(this.level, lp.getLayerListener(LightLayer.SKY).getDataLayerData(csp));
                     VoxelIngestService.rawIngest(system.getEngine(), section, x, y, z,
                             blp == null ? null : blp.copy(),
                             slp == null ? null : slp.copy());

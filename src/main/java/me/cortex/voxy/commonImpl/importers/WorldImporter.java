@@ -12,6 +12,7 @@ import me.cortex.voxy.common.voxelization.WorldConversionFactory;
 import me.cortex.voxy.common.voxelization.WorldVoxilizedSectionMipper;
 import me.cortex.voxy.common.world.WorldEngine;
 import me.cortex.voxy.common.world.WorldUpdater;
+import me.cortex.voxy.common.world.service.VoxelIngestService;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -100,9 +101,11 @@ public class WorldImporter implements IDataImporter {
     private final Service service;
 
     private volatile boolean isRunning;
+    private final Level mcWorld;
 
     public WorldImporter(WorldEngine worldEngine, Level mcWorld, ServiceManager sm, BooleanSupplier runChecker) {
         this.world = worldEngine;
+        this.mcWorld = mcWorld;
         this.service = sm.createService(()->new Pair<>(()->this.jobQueue.poll().run(), ()->{}), 3, "World importer", runChecker);
 
         var biomeRegistry = mcWorld.registryAccess().registryOrThrow(Registries.BIOME);
@@ -520,7 +523,7 @@ public class WorldImporter implements IDataImporter {
         if (skyLightData.length != 0) {
             skyLight = new DataLayer(skyLightData);
         } else {
-            skyLight = null;
+            skyLight = VoxelIngestService.skyLightOrFull(this.mcWorld, null);//No saved sky data means fully lit (above terrain)
         }
 
         var blockStatesRes = blockStateCodec.parse(NbtOps.INSTANCE, section.getCompound("block_states"));
